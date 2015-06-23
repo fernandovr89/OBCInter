@@ -52,6 +52,12 @@ Flow('rhomod','refs',
      $RSFROOT/bin/sfunif2 d1=%g n1=%d v00=%s 
      ''' % (d,nz,dstr))
 
+# rho [g/cm^3] , vel [km/s], 
+Flow('blkmod','vpmod rhomod',
+     '''
+     math rho=${SOURCES[1]} output=rho*((input)^2)
+     ''')
+
 # ------------------------------------------------------------
 par = dict( 
     nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='km',
