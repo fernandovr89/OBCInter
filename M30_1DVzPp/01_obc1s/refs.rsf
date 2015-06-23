@@ -1,0 +1,14 @@
+0.3 0.3 0.3 0.3 0.45 0.45 0.45 0.45 1.9 1.9 1.9 1.9 n1=4 n2=3 o1=0 d1=2 data_format=ascii_float in=layers.asc
+1.6	sfdd	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:43:48 2015
+
+	data_format="native_float"
+	esize=4
+	in="/gpfs/groups/villanueva/tmp/OBCInter/M30_1DVzPp/01_obc1s/layers.rsf@"
+1.6	sfspline	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:43:48 2015
+
+	o1=0
+	data_format="native_float"
+	esize=4
+	in="/gpfs/groups/villanueva/tmp/OBCInter/M30_1DVzPp/01_obc1s/refs.rsf@"
+	d1=0.0075
+	n1=801

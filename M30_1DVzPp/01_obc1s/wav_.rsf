@@ -1,0 +1,52 @@
+1.6	sfspike	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	o1=0
+	label1="Time"
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	unit1="s"
+	d1=0.0001
+	n1=5001
+	in="stdin"
+
+1.6	sfpad	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	end1=5001
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	n1=10002
+	in="stdin"
+
+1.6	sfricker1	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	in="stdin"
+
+1.6	sfwindow	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	o1=0
+	label1="Time"
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	unit1="s"
+	d1=0.0001
+	n1=5001
+	in="stdin"
+
+1.6	sfscale	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	data_format="native_float"
+	esize=4
+	in="stdout"
+	in="stdin"
+
+1.6	sfput	OBCInter/M30_1DVzPp/01_obc1s:	villanueva@malbec01	Tue Jun 23 15:42:30 2015
+
+	data_format="native_float"
+	in="/gpfs/groups/villanueva/tmp/OBCInter/M30_1DVzPp/01_obc1s/wav_.rsf@"
+	label1=t
