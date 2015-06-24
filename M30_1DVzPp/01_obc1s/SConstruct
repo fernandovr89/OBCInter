@@ -61,9 +61,9 @@ Flow('blkmod','vpmod rhomod',
 
 # ------------------------------------------------------------
 par = dict( 
-    nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='km',
-    nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='km',
-    nt=5001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
+    nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
+    nt=15001,ot=0.0, dt=0.0001, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=5000,
@@ -77,12 +77,25 @@ par = dict(
 fdmod.param(par)
 # ------------------------------------------------------------
 
-Plot  ('vpmod',fdmod.cgrey('mean=y',par))
+#Plot  ('vpmod',fdmod.cgrey('mean=y',par))
 #Result('mod',fdmod.cgrey('mean=y',par))
 
 ns=151
 ds=0.02*kilo
 rz0 = wbz
+sx0 = 1.5*kilo
+si = 0
+sx = sx0 + si*ds
+sz0 = 0.02*kilo
+sz = sz0
+rz = rz0
+#fdmod.horizontal('ss',sz,par)
+
+fdmod.point('ss_',sx,sz,par)
+fdmod.horizontal('rr',rz,par)
+Flow('ss','ss_','put n2=1')
+
+
 ## ------------------------------------------------------------
 # horizontal array @ z=1.5km
 ##fdmod.horizontal('tH',rz0,par)
@@ -111,14 +124,21 @@ rz0 = wbz
 fdmod.wavelet('wav_',30,par) 
 
 # transpose wavelet
-Flow(  'wav','wav_','transp')      
+Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13')      
+
 
 # plot wavelet
-Result('wav','window n2=4000 |'
-       + fdmod.waveplot('',par)) 
+#Result('wav','window n2=4000 |'
+#       + fdmod.waveplot('',par)) 
 
 
 ## ------------------------------------------------------------
+
+Flow('Fdat Fwfl','wav blkmod rhomod ss rr',
+    '''
+    awesg bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+    rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50 verb=y debug=y
+    ''')
 
 #for si in range(ns):
 ##for si in [75]:
