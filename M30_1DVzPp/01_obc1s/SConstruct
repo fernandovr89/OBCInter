@@ -63,7 +63,7 @@ Flow('blkmod','vpmod rhomod',
 par = dict( 
     nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
     nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
-    nt=15001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    nt=5001,ot=0.0, dt=0.0001, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=5000,
@@ -124,7 +124,7 @@ Flow('ss','ss_','put n2=1')
 fdmod.wavelet('wav_',30,par) 
 
 # transpose wavelet
-Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13')      
+Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13 | pad end2=2')      
 
 
 # plot wavelet
@@ -134,11 +134,11 @@ Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13')
 
 ## ------------------------------------------------------------
 
-Flow('Fdat Fwfl','wav blkmod rhomod ss rr',
-    '''
-    awesg bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
-    rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50 verb=y debug=y
-    ''')
+#Flow('Fdat Fwfl','wav blkmod rhomod ss rr',
+#    '''
+#    awesg bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+#    rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50 verb=y debug=y
+#    ''')
 
 #for si in range(ns):
 ##for si in [75]:
