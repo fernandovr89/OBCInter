@@ -1,6 +1,7 @@
 from rsf.proj import *
 from rsf.recipes import fdmod
 import ast
+from numpy import *
 
 kilo = 1000
 xmax = 12.0*kilo
@@ -134,7 +135,7 @@ Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13 | pad end2=2')
 
 
 #for si in range(ns):
-for si in [75,100]:
+for si in [75]:
 ##
   stag='%03d'%si
   sx = sx0 + si*ds
@@ -154,11 +155,45 @@ for si in [75,100]:
        window squeeze=n n1=%d f3=%d j3=%d  |
        put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
        '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
-            par['orH'], par['jrH']*par['dx'])) 
+            par['orH'], par['jrH']*par['dx']))
+ 
 ##  Result('datH'+stag,'window j2=4 | transp|'
 ##         + fdmod.dgrey('pclip=92'%par,par))
   
-### ENDFOR { for si in range(ns):}
+##ENDFOR { for si in range(ns):}
+
+Flow('datPP'+stag,'datH'+stag,
+    '''
+    window n3=1 f3=0
+    ''')
+Flow('datVZ'+stag,'datH'+stag,
+    '''
+    window n3=1 f3=1
+    ''')
+Flow('datSc'+stag,'datPP'+stag+' datVZ'+stag,
+     '''
+     math vz=${SOURCES[1]} output='1/(vz*10000000)' |
+     math pp=${SOURCES[0]} output='abs((input*pp))' | 
+     nan2value 
+     ''',stdin=0)
+#  | clip clip=100000 | smooth rect1=5 rect2=5 
+
+Flow('datDw'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
+     '''
+     math pp=${SOURCES[0]} vz=${SOURCES[1]} weight=${SOURCES[2]} output='pp+10000000*vz*weight'
+     ''',stdin=0)
+
+#with open('datSc'+stag+'.rsf','rb') as f:
+#  data = f.read()
+#  print "%g"%float(data[0])
+#  nan_flag = isnan(float(data))
+#  data[nan_flag] = 0
+#with open('datSc'+stag+'.rsf','wb') as f:
+#  f.write(data)
+
+
+# |  smooth rect1=10
+# | clip clip=10000 value=0
 
 #Result('wigH','datH','window j2=4 | transp|'
 #       + fdmod.dwigl('pclip=98'%par,par))
