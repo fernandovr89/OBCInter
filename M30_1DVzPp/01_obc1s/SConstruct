@@ -3,7 +3,7 @@ from rsf.recipes import fdmod
 import ast
 
 kilo = 1000
-xmax = 6.0*kilo
+xmax = 12.0*kilo
 zmax = 2.0*kilo
 wbz = 0.3*kilo
 layers = ((wbz,wbz,wbz,wbz),
@@ -63,7 +63,7 @@ Flow('blkmod','vpmod rhomod',
 par = dict( 
     nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
     nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
-    nt=5001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    nt=20001,ot=0.0, dt=0.0001, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=5000,
@@ -80,35 +80,33 @@ fdmod.param(par)
 #Plot  ('vpmod',fdmod.cgrey('mean=y',par))
 #Result('mod',fdmod.cgrey('mean=y',par))
 
-ns=151
-ds=0.02*kilo
+ns = 151
+nr = 301
+ds = 0.02*kilo
+dr_grid = 3
+rx0 = 3.0*kilo 
 rz0 = wbz
-sx0 = 1.5*kilo
-si = 0
-sx = sx0 + si*ds
+sx0 = 4.5*kilo
 sz0 = 0.02*kilo
 sz = sz0
 rz = rz0
-#fdmod.horizontal('ss',sz,par)
 
-fdmod.point('ss_',sx,sz,par)
-fdmod.horizontal('rr',rz,par)
-Flow('ss','ss_','put n2=1')
+fdmod.horizontal('rr_all',rz,par)
 
 
 ## ------------------------------------------------------------
 # horizontal array @ z=1.5km
 ##fdmod.horizontal('tH',rz0,par)
-##par['jrH']=3   # jump (grid points)
-##par['orH']=3.0 # origin
-##par['nrH']=300   # number
+par['jrH']=dr_grid   # jump (grid points)
+par['orH']=rx0 # origin
+par['nrH']=nr   # number
 ##
 ### window array
-##Flow('rH','tH',
-##  'window j2=%d min2=%g n2=%d'%
-##  (par['jrH'],  # jump
-##   par['orH'],  # origin
-##   par['nrH'])) # number
+Flow('rr','rr_all',
+  'window j2=%d min2=%g n2=%d'%
+  (par['jrH'],  # jump
+   par['orH'],  # origin
+   par['nrH'])) # number
 ##    
 ##    # plot array
 ##Plot(  'rH',fdmod.rrplot('',par))
@@ -134,82 +132,33 @@ Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13 | pad end2=2')
 
 ## ------------------------------------------------------------
 
-#Flow('Fdat Fwfl','wav blkmod rhomod ss rr',
-#    '''
-#    awesg bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
-#    rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50 verb=y debug=y
-#    ''')
 
 #for si in range(ns):
-##for si in [75]:
+for si in [75,100]:
 ##
-##  stag='%03d'%si
-###
-### ------------------------------------------------------------
-### source coordinates (exploding reflectors)
-##  fdmod.boxarray('ss'+stag,
-##                 1,   # vertical number
-##                 0.02,   # vertical origin 
-##                 0.02, # vertical sampling
-##                 2,  # horizontal number
-##                 1.5+ds*si,  # horizontal origin
-##                 0.01, # horizontal sampling
-##                 par)
-###  Plot(  'ss',fdmod.ssplot('',par))
-###Result('ss',['mod','ss'],'Overlay')
-##
-##
-### ------------------------------------------------------------
-#### run FD modeling
-##  fdmod.awefd1('tmpA'+stag,  # data file (all receivers)
-##               'wfld'+stag,  # wavefield snapshots
-##               'wav',   # source wavelet
-##               'vstr',  # velocity
-##               'dens',  # density
-##               'ss'+stag,    # source coordinates
-##               'rH',    # receiver coordinates
-##               'fsrf=y',# optional flags
-##               par)
-###
-#### ------------------------------------------------------------
-###par['nfrm']=int((par['nt']-1)/par['jsnap'])
-###for i in range(par['nfrm']):
-###    tag = '-%02d'%i
-###    # plot wavefield frames
-###    fdmod.wframe('wfld'+tag,
-###                 'wfld',i,'pclip=99',par)
-###    Plot(  'wovl'+tag,['wfld'+tag,'ss','rH'],
-###           'Overlay')
-###    Result('wfld'+tag,['wfld'+tag,'ss','rH'],
-###           'Overlay')
-###Result('wfld',
-###       ['wovl-%02d'%i for i in range(par['nfrm'])],
-###       'Movie')
-##    
-#### ------------------------------------------------------------
-#### remove the wavelet delay and resample
-##  Flow('datA'+stag,'tmpA'+stag,
-##       '''
-##       window squeeze=n f2=%(kt)d j2=%(drsmpt)d  |
-##       pad end2=%(kt)d |
-##       put o2=%(ot)g
-##       ''' %par)
-###  Flow(None,'tmpA'+stag,'rm $SOURCE ',stdin=0)
-##
-###
-#### ------------------------------------------------------------
+  stag='%03d'%si
+  sx = sx0 + si*ds
+  fdmod.point('ss_',sx,sz,par)
+  Flow('ss','ss_','put n2=1')
+
+  Flow('Fdat'+stag+' Fwfl'+stag,'wav blkmod rhomod ss rr',
+      '''
+      awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50
+      ''')
+
 #### window data from the horizontal array
-##  Flow('datH'+stag,'datA'+stag,
-##       '''
-##       window squeeze=n n1=%d |
-##       put o1=%g d1=%g
-##       '''%(par['nrH'],
-##            par['orH'],
-##          par['jrH']*par['dx'])) 
+  Flow('datH'+stag,'Fdat'+stag,
+       '''
+       pad end3=%d |
+       window squeeze=n n1=%d f3=%d j3=%d  |
+       put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
+       '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
+            par['orH'], par['jrH']*par['dx'])) 
 ##  Result('datH'+stag,'window j2=4 | transp|'
 ##         + fdmod.dgrey('pclip=92'%par,par))
-##  
-##### ENDFOR { for si in range(ns):}
+  
+### ENDFOR { for si in range(ns):}
 
 #Result('wigH','datH','window j2=4 | transp|'
 #       + fdmod.dwigl('pclip=98'%par,par))
