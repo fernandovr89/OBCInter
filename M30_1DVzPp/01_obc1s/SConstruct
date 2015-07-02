@@ -171,68 +171,36 @@ Flow('datVZ'+stag,'datH'+stag,
     '''
     window n3=1 f3=1
     ''')
-Flow('datSc'+stag,'datPP'+stag+' datVZ'+stag,
-     '''
-     math vz=${SOURCES[1]} output='1/(vz)' |
-     clip clip=99999.999 |
-     math pp=${SOURCES[0]} output='abs((input*pp))/10000000' | 
-     nan2value 
-     ''',stdin=0)
-#  | clip clip=100000 | smooth rect1=5 rect2=5 
-#sfwindow < ./datPP075.rsf n2=50 f2=110 n1=50 f1=15 | sfgrey clip=999999.00 | sfpen &
-Flow('datVZ_sclNeg'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
-     '''
-     math pp=${SOURCES[0]} vz=${SOURCES[1]} weight=${SOURCES[2]} output='-10000000*vz*weight'
-     ''',stdin=0)
-Flow('datVZ_sclPos'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
-     '''
-     math pp=${SOURCES[0]} vz=${SOURCES[1]} weight=${SOURCES[2]} output='10000000*vz*weight'
-     ''',stdin=0)
-##nt = 100
-##wdw_xn = 100
-##wdw_x0 = 75
-##wdw_tn = nt
-##wdw_t0 = 10
+##Flow('datSc'+stag,'datPP'+stag+' datVZ'+stag,
+##     '''
+##     math vz=${SOURCES[1]} output='1/(vz)' |
+##     clip clip=99999.999 |
+##     math pp=${SOURCES[0]} output='abs((input*pp))/10000000' | 
+##     nan2value 
+##     ''',stdin=0)
+###  | clip clip=100000 | smooth rect1=5 rect2=5 
+###sfwindow < ./datPP075.rsf n2=50 f2=110 n1=50 f1=15 | sfgrey clip=999999.00 | sfpen &
+##Flow('datVZ_sclNeg'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
+##     '''
+##     math pp=${SOURCES[0]} vz=${SOURCES[1]} weight=${SOURCES[2]} output='-10000000*vz*weight'
+##     ''',stdin=0)
+##Flow('datVZ_sclPos'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
+##     '''
+##     math pp=${SOURCES[0]} vz=${SOURCES[1]} weight=${SOURCES[2]} output='10000000*vz*weight'
+##     ''',stdin=0)
 
-#nt = 400
-#wdw_xn = 300
-#wdw_x0 = 0
-#wdw_tn = nt
-#wdw_t0 = 0
-
-nt = 70
-wdw_xn = 10
-wdw_x0 = 130
-wdw_tn = nt
-wdw_t0 = 0
-
-
-Flow('datVZ_wdw'+stag,'datVZ'+stag,
-     '''
-      window n2=%d f2=%d n1=%d f1=%d | costaper nw2=10 nw1=10 
-     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
-Flow('datPP_wdw'+stag,'datPP'+stag,
-     '''
-      window n2=%d f2=%d n1=%d f1=%d | costaper nw1=10 nw2=10
-     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
-
-Flow('datVZ_p90_wdw'+stag,'datVZ_wdw'+stag,
-     '''
-     fft1 | 
-     math output='real(input)+imag(input)' | 
-     fft1 inv=y 
-     ''')
-for phsh_i in range(16):
-  phsh_itag = '%03d'%(22.5*phsh_i)
-  phsh = phsh_i*math.pi/8.0
-  phsh_re = math.cos(phsh-math.pi*0.5)
-  phsh_im = math.sin(phsh-math.pi*0.5)
-  Flow('datVZ_p%s_wdw'%(phsh_itag)+stag,'datVZ_wdw'+stag,
-       '''
-       fft1 |
-       math output='(%g+I*%g)*(real(input)+imag(input))' | 
-       fft1 inv=y 
-       '''%(phsh_re,phsh_im))
+##### PASTE WINDOW
+##for phsh_i in range(16):
+##  phsh_itag = '%03d'%(22.5*phsh_i)
+##  phsh = phsh_i*math.pi/8.0
+##  phsh_re = math.cos(phsh-math.pi*0.5)
+##  phsh_im = math.sin(phsh-math.pi*0.5)
+##  Flow('datVZ_p%s_wdw'%(phsh_itag)+stag,'datVZ_wdw'+stag,
+##       '''
+##       fft1 |
+##       math output='(%g+I*%g)*(real(input)+imag(input))' | 
+##       fft1 inv=y 
+##       '''%(phsh_re,phsh_im))
 ##ENDLOOP{for phsh_i in range(8)}:
 
 #     math output='1.57*imag(input)+1.57*real(input) ' | 
@@ -240,25 +208,25 @@ for phsh_i in range(16):
 
 #     math output='0.25*I*real(input)+0.25*I*imag(input)+1.25*imag(input)+1.25*real(input) ' | 
 
-Flow('datVZ_m90_wdw'+stag,'datVZ_wdw'+stag,
-     '''
-     fft1 | 
-     math output='imag(input)+I*real(input)' | 
-     fft1 inv=y 
-     ''')
-
-Flow('datVZ_sclNegToPef'+stag,'datVZ_sclNeg'+stag,
-     '''
-     window n2=%d f2=%d n1=%d f1=%d
-     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
-Flow('datVZ_despike_sclNegToPef'+stag,'datVZ_sclNegToPef'+stag,
-      '''
-      $RSFROOT/bin/sfdespike2 wide1=5 wide2=5
-      ''')
-Flow('datVZ_bandpass'+stag,'datVZ_sclNegToPef'+stag,
-      '''
-      $RSFROOT/bin/sfbandpass fhi=60 flo=1 | costaper nw1=5 nw2=5 
-      ''')
+##Flow('datVZ_m90_wdw'+stag,'datVZ_wdw'+stag,
+##     '''
+##     fft1 | 
+##     math output='imag(input)+I*real(input)' | 
+##     fft1 inv=y 
+##     ''')
+##
+##Flow('datVZ_sclNegToPef'+stag,'datVZ_sclNeg'+stag,
+##     '''
+##     window n2=%d f2=%d n1=%d f1=%d
+##     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
+##Flow('datVZ_despike_sclNegToPef'+stag,'datVZ_sclNegToPef'+stag,
+##      '''
+##      $RSFROOT/bin/sfdespike2 wide1=5 wide2=5
+##      ''')
+##Flow('datVZ_bandpass'+stag,'datVZ_sclNegToPef'+stag,
+##      '''
+##      $RSFROOT/bin/sfbandpass fhi=60 flo=1 | costaper nw1=5 nw2=5 
+##      ''')
 
 ##nshifts = 7
 ##shifts = ['datVZ_sclNegToPef'+stag]
@@ -302,10 +270,10 @@ Flow('datVZ_bandpass'+stag,'datVZ_sclNegToPef'+stag,
 
 #Flow('datVZ_specbal'+stag,'datPP_wdw'+stag+' datVZ_sclNegToPef'+stag,'< ${SOURCES[1]} $RSFROOT/bin/sfreshape dim=2 ma=${SOURCES[0]} ma2=${SOURCES[1]}',stdin=0)
 
-Flow('datVZ_despike_sclNegToPef'+stag,'datVZ_sclNegToPef'+stag,
-      '''
-      $RSFROOT/bin/sfdespike2 wide1=3 wide2=3
-      ''')
+##Flow('datVZ_despike_sclNegToPef'+stag,'datVZ_sclNegToPef'+stag,
+##      '''
+##      $RSFROOT/bin/sfdespike2 wide1=3 wide2=3
+##      ''')
 
 ##Flow('datVZ_ampbal'+stag,'datPP_wdw'+stag+' datVZ_bandpass'+stag,'< ${SOURCES[1]} $RSFROOT/bin/sfabalance other=${SOURCES[0]} ',stdin=0)
 
@@ -348,20 +316,20 @@ Flow('datVZ_despike_sclNegToPef'+stag,'datVZ_sclNegToPef'+stag,
 
 
 #### Tau-p Test
-Flow('datVZ_bpass_wdw'+stag,'datVZ_p90_wdw'+stag,
-      '''
-      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
-      ''')
-Flow('datPP_bpass_wdw'+stag,'datPP_wdw'+stag,
-      '''
-      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
-      ''')
-Flow('datPP_bpass_p90_wdw'+stag,'datPP_p90_wdw'+stag,
-      '''
-      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
-      ''')
-
-eps_ratPPVZ = 0.00
+##Flow('datVZ_bpass_wdw'+stag,'datVZ_p90_wdw'+stag,
+##      '''
+##      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+##      ''')
+##Flow('datPP_bpass_wdw'+stag,'datPP_wdw'+stag,
+##      '''
+##      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+##      ''')
+##Flow('datPP_bpass_p90_wdw'+stag,'datPP_p90_wdw'+stag,
+##      '''
+##      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+##      ''')
+##
+##eps_ratPPVZ = 0.00
 ##Flow('specVZ_wdw'+stag,'datVZ_bpass_wdw'+stag,'spectra')
 ##Flow('spfkPP_wdw'+stag,'datPP_bpass_wdw'+stag,'spectra2')
 ##
@@ -555,89 +523,163 @@ def fband_dcomp(finame=finame, fband=fband):
        '''%(len(foname_fbi)) )
   return foname
 ##########################################################
-## Frequency band decomposition
+##nt = 100
+##wdw_xn = 100
+##wdw_x0 = 75
+##wdw_tn = nt
+##wdw_t0 = 10
+
+#nt = 400
+#wdw_xn = 300
+#wdw_x0 = 0
+#wdw_tn = nt
+#wdw_t0 = 0
+
+nt = 70
+wdw_xn = 10
+wdw_x0 = 130
+wdw_tn = nt
+wdw_t0 = 0
+
+
+Flow('datVZ_wdw'+stag,'datVZ'+stag,
+     '''
+      window n2=%d f2=%d n1=%d f1=%d | costaper nw2=10 nw1=10 
+     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
+Flow('datPP_wdw'+stag,'datPP'+stag,
+     '''
+      window n2=%d f2=%d n1=%d f1=%d | costaper nw1=10 nw2=10
+     '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
+Flow('datVZ_bpass_wdw'+stag,'datVZ_wdw'+stag,
+      '''
+      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+      ''')
+Flow('datPP_bpass_wdw'+stag,'datPP_wdw'+stag,
+      '''
+      $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+      ''')
+
+eps_ratPPVZ = 0.00
+
 #fband = [20,30]
 fband = [0,35,70,99]
 
 datPP_bpass = 'datPP_bpass_wdw'+stag
 datPP_fbi = fband_dcomp(finame=datPP_bpass, fband=fband)
-datVZ_bpass = 'datVZ_bpass_wdw'+stag
-datVZ_fbi = fband_dcomp(finame=datVZ_bpass, fband=fband)
 
-## Envelope computation
-
-datVZ_envelope = datVZ_fbi+'_envelope' 
-Flow(datVZ_envelope,datVZ_fbi,'$RSFROOT/bin/sfenvelope')
 datPP_envelope = datPP_fbi+'_envelope' 
 Flow(datPP_envelope,datPP_fbi,'$RSFROOT/bin/sfenvelope')
 
-## PP/VZ Envelope Ratio
-
 PPVZ_mag_ord = 10000000.0
-
-datPPVZ_ratio = 'datPPVZ_ratio_wdw'+stag
 nax3 = len(fband)-1
-datPPVZ_ratio_nax3i = []
-datVZSc_fbi_nax3i = []
-datVZSc_fbi = 'datVZSc_fbi_wdw'+stag
+
 for nax3i in range (nax3):
   nax3i_tag = '%02d'%nax3i
   datPP_envelope_tmp = datPP_envelope+'_tmp'+nax3i_tag
-  datVZ_fbi_tmp = datVZ_fbi+'_tmp'+nax3i_tag
   
   Flow(datPP_envelope_tmp,datPP_envelope,
        '''
        window n3=1 f3=%d
        '''%(nax3i))
-  Flow(datPPVZ_ratio+nax3i_tag,datVZ_envelope+' '+datPP_envelope_tmp,
-       '''
-       window n3=1 f3=%d | math output='1/(input*%g+%g)' | 
-       math pp=${SOURCES[1]} output='(input*pp)' 
-       '''%(nax3i,PPVZ_mag_ord,eps_ratPPVZ))
-  datPPVZ_ratio_nax3i.append(datPPVZ_ratio+nax3i_tag)
 
-  Flow(datVZ_fbi_tmp,datVZ_fbi,
-       '''
-       window n3=1 f3=%d
-       '''%(nax3i))
-  Flow(datVZSc_fbi+nax3i_tag,datPPVZ_ratio+nax3i_tag+' '+datVZ_fbi_tmp,
-       '''
-       math vz=${SOURCES[1]} output='-1*%d*input*vz'
-       '''%(PPVZ_mag_ord))
-  datVZSc_fbi_nax3i.append(datVZSc_fbi+nax3i_tag)
+datPPUp_stk_psi = []
+datPPDw_stk_psi = []
 
-##ENDLOOP{for nax3i in range (nax3):}
-Flow(datPPVZ_ratio,datPPVZ_ratio_nax3i,
-     '''
-     cat ${SOURCES[1:%d]}
-     '''%(len(datPPVZ_ratio_nax3i)) )
-Flow(datVZSc_fbi,datVZSc_fbi_nax3i,
-     '''
-     cat ${SOURCES[1:%d]} | put o3=0
-     '''%(len(datVZSc_fbi_nax3i)) )
-datPPUp_fbi = 'datPPUp_fbi_wdw'+stag
-datPPDw_fbi = 'datPPDw_fbi_wdw'+stag
+for phsh_i in range(16):
+  phsh_itag = '%03d'%(22.5*phsh_i)
+  phsh = phsh_i*math.pi/8.0
+  phsh_re = math.cos(phsh-math.pi*0.5)
+  phsh_im = math.sin(phsh-math.pi*0.5)
+  foname_phsh =  'datVZ_bpass_p%s_wdw'%(phsh_itag)+stag
+  finame_phsh =  'datVZ_bpass_wdw'+stag
+  Flow(foname_phsh,finame_phsh,
+       '''
+       fft1 |
+       math output='(%g+I*%g)*(real(input)+imag(input))' | 
+       fft1 inv=y 
+       '''%(phsh_re,phsh_im))
+  ## Frequency band decomposition
+  
+  datVZ_bpass = foname_phsh
+  datVZ_fbi = fband_dcomp(finame=datVZ_bpass, fband=fband)
+  
+  ## Envelope computation
+  
+  datVZ_envelope = datVZ_fbi+'_envelope' 
+  Flow(datVZ_envelope,datVZ_fbi,'$RSFROOT/bin/sfenvelope')
+  
+  ## PP/VZ Envelope Ratio
+  
+  
+  datPPVZ_ratio = datVZ_fbi+'_PPVZ_ratio'
+  datPPVZ_ratio_nax3i = []
+  datVZSc_fbi_nax3i = []
+  datVZSc_fbi = datVZ_fbi+'_Sc'
+  for nax3i in range (nax3):
+    nax3i_tag = '%02d'%nax3i
+    datVZ_fbi_tmp = datVZ_fbi+'_tmp'+nax3i_tag
+    
+    Flow(datPPVZ_ratio+nax3i_tag,datVZ_envelope+' '+datPP_envelope_tmp,
+         '''
+         window n3=1 f3=%d | math output='1/(input*%g+%g)' | 
+         math pp=${SOURCES[1]} output='(input*pp)' 
+         '''%(nax3i,PPVZ_mag_ord,eps_ratPPVZ))
+    datPPVZ_ratio_nax3i.append(datPPVZ_ratio+nax3i_tag)
+  
+    Flow(datVZ_fbi_tmp,datVZ_fbi,
+         '''
+         window n3=1 f3=%d
+         '''%(nax3i))
+    Flow(datVZSc_fbi+nax3i_tag,datPPVZ_ratio+nax3i_tag+' '+datVZ_fbi_tmp,
+         '''
+         math vz=${SOURCES[1]} output='-1*%d*input*vz'
+         '''%(PPVZ_mag_ord))
+    datVZSc_fbi_nax3i.append(datVZSc_fbi+nax3i_tag)
+  
+  ##ENDLOOP{for nax3i in range (nax3):}
+  Flow(datPPVZ_ratio,datPPVZ_ratio_nax3i,
+       '''
+       cat ${SOURCES[1:%d]}
+       '''%(len(datPPVZ_ratio_nax3i)) )
+  Flow(datVZSc_fbi,datVZSc_fbi_nax3i,
+       '''
+       cat ${SOURCES[1:%d]} | put o3=0
+       '''%(len(datVZSc_fbi_nax3i)) )
+  
+  datPPUp_fbi = 'datPPUp_fbi_wdw'+stag+'_ps%s'%(phsh_itag)
+  datPPDw_fbi = 'datPPDw_fbi_wdw'+stag+'_ps%s'%(phsh_itag)
+  datPPUp_stk_1t = datPPUp_fbi+'_1t'
+  datPPDw_stk_1t = datPPDw_fbi+'_1t'
+  Flow(datPPUp_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,0.5 ${SOURCES[1]}')
+  Flow(datPPDw_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,-0.5 ${SOURCES[1]}')
+  Flow(datPPUp_stk_1t,datPPUp_fbi,'stack axis=3 norm=n | window n2=1 f2=0')
+  Flow(datPPDw_stk_1t,datPPDw_fbi,'stack axis=3 norm=n | window n2=1 f2=0')
+  datPPUp_stk_psi.append(datPPUp_stk_1t)
+  datPPDw_stk_psi.append(datPPDw_stk_1t)
 
-Flow(datPPUp_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,0.5 ${SOURCES[1]}')
-Flow(datPPDw_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,-0.5 ${SOURCES[1]}')
+##ENDLOOP{for phsh_i in range(16):}
+
+Flow('datPPUp_stk_psi',datPPUp_stk_psi,'cat $SOURCES[1:%d]'%len(datPPUp_stk_psi))
+Flow('datPPDw_stk_psi',datPPDw_stk_psi,'cat $SOURCES[1:%d]'%len(datPPDw_stk_psi))
+
 Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
 #Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'add scale=1,-1 ${SOURCES[1]}')
 Flow('datVZ_VZ_fbi',datVZ_fbi+' '+datVZ_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
 
 ## Match filter
-nt=400
-Flow('lag.asc',None,
-     '''
-     echo %d n1=1 n=%d,100 data_format=ascii_int in=$TARGET
-     ''' % (nt,nt))
-Flow('lag','lag.asc','dd form=native')
-
-Flow('pef.asc','lag',
-     '''
-     echo -1 a0=1 n1=1 data_format=ascii_float in=$TARGET
-     lag=$SOURCE
-     ''',stdin=0)
-Flow('pef','pef.asc','dd form=native')
+##nt=400
+##Flow('lag.asc',None,
+##     '''
+##     echo %d n1=1 n=%d,100 data_format=ascii_int in=$TARGET
+##     ''' % (nt,nt))
+##Flow('lag','lag.asc','dd form=native')
+##
+##Flow('pef.asc','lag',
+##     '''
+##     echo -1 a0=1 n1=1 data_format=ascii_float in=$TARGET
+##     lag=$SOURCE
+##     ''',stdin=0)
+##Flow('pef','pef.asc','dd form=native')
 
 ##shifts = []
 ##datVZSc_stack = 'datVZSc_stack_wdw'+stag
