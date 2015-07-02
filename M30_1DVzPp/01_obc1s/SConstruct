@@ -1,5 +1,6 @@
 from rsf.proj import *
 from rsf.recipes import fdmod
+from math import *
 import ast
 from numpy import *
 
@@ -193,17 +194,17 @@ Flow('datVZ_sclPos'+stag,'datPP'+stag+' datVZ'+stag+' datSc'+stag,
 ##wdw_tn = nt
 ##wdw_t0 = 10
 
-nt = 400
-wdw_xn = 300
-wdw_x0 = 0
+#nt = 400
+#wdw_xn = 300
+#wdw_x0 = 0
+#wdw_tn = nt
+#wdw_t0 = 0
+
+nt = 70
+wdw_xn = 10
+wdw_x0 = 130
 wdw_tn = nt
 wdw_t0 = 0
-
-##nt = 70
-##wdw_xn = 1
-##wdw_x0 = 130
-##wdw_tn = nt
-##wdw_t0 = 0
 
 
 Flow('datVZ_wdw'+stag,'datVZ'+stag,
@@ -221,12 +222,23 @@ Flow('datVZ_p90_wdw'+stag,'datVZ_wdw'+stag,
      math output='real(input)+imag(input)' | 
      fft1 inv=y 
      ''')
-Flow('datPP_p90_wdw'+stag,'datPP_wdw'+stag,
-     '''
-     fft1 | 
-     math output='-0.5*I*real(input)-0.5*I*imag(input)+0.5*imag(input)+0.5*real(input) ' | 
-     fft1 inv=y 
-     ''')
+for phsh_i in range(16):
+  phsh_itag = '%03d'%(22.5*phsh_i)
+  phsh = phsh_i*math.pi/8.0
+  phsh_re = math.cos(phsh-math.pi*0.5)
+  phsh_im = math.sin(phsh-math.pi*0.5)
+  Flow('datVZ_p%s_wdw'%(phsh_itag)+stag,'datVZ_wdw'+stag,
+       '''
+       fft1 |
+       math output='(%g+I*%g)*(real(input)+imag(input))' | 
+       fft1 inv=y 
+       '''%(phsh_re,phsh_im))
+##ENDLOOP{for phsh_i in range(8)}:
+
+#     math output='1.57*imag(input)+1.57*real(input) ' | 
+#     math output='0.5*I*real(input)+0.5*I*imag(input)+1.5*imag(input)+1.5*real(input) ' | Reduce a lot
+
+#     math output='0.25*I*real(input)+0.25*I*imag(input)+1.25*imag(input)+1.25*real(input) ' | 
 
 Flow('datVZ_m90_wdw'+stag,'datVZ_wdw'+stag,
      '''
@@ -545,7 +557,7 @@ def fband_dcomp(finame=finame, fband=fband):
 ##########################################################
 ## Frequency band decomposition
 #fband = [20,30]
-fband = [0,35,70,100]
+fband = [0,35,70,99]
 
 datPP_bpass = 'datPP_bpass_wdw'+stag
 datPP_fbi = fband_dcomp(finame=datPP_bpass, fband=fband)
@@ -658,5 +670,44 @@ Flow('pef','pef.asc','dd form=native')
 ##
 
 #####
+
+
+#### SEGY write Phase test
+
+
+segy_finame = 'datPP_bpass_wdw'+stag
+segy_foname = 'segy_'+segy_finame
+segy_foname_trcl = 'trcl_'+segy_foname
+segy_foname_tfile = 'tfile_'+segy_foname
+
+Flow(segy_foname_trcl,segy_finame,
+      '''
+      < ${SOURCE} $RSFROOT/bin/sfheadermath output=N+1 | sfdd type=int \r 
+      ''',stdin=0)
+
+Flow(segy_foname_tfile,segy_finame+' '+segy_foname_trcl,
+      '''
+      < ${SOURCES[0]} $RSFROOT/bin/sfsegyheader tracl=${SOURCES[1]} \r
+      ''',stdin=0)
+Flow(segy_foname+'.segy',segy_finame+' '+segy_foname_tfile,
+      '''
+      < ${SOURCES[0]} $RSFROOT/bin/sfsegywrite tfile=${SOURCES[1]}
+      ''',stdin=0)
+ph = 45
+segy_finame = 'test_%ddeg.segy'%ph
+segy_foname = 'datPP_bpass_fp%d_wdw'%(ph)+stag
+Flow(segy_foname,segy_finame,
+      '''
+      < ${SOURCES[0]} $RSFROOT/bin/sfsegyread tfile=tfile.rsf hfile=hfile bfile=bfile endian=1
+      ''',stdin=0)
+ph = 90
+segy_finame = 'test_%ddeg.segy'%ph
+segy_foname = 'datPP_bpass_fp%d_wdw'%(ph)+stag
+Flow(segy_foname,segy_finame,
+      '''
+      < ${SOURCES[0]} $RSFROOT/bin/sfsegyread tfile=tfile.rsf hfile=hfile bfile=bfile endian=1
+      ''',stdin=0)
+
+#################3
 
 End()
