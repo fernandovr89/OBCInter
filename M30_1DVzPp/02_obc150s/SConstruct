@@ -1,0 +1,500 @@
+from rsf.proj import *
+from rsf.recipes import fdmod
+from math import *
+import ast
+from numpy import *
+
+kilo = 1000
+xmax = 12.0*kilo
+zmax = 2.0*kilo
+wbz = 0.15*kilo
+layers = ((wbz,wbz,wbz,wbz),
+          (0.45*kilo,0.45*kilo,0.45*kilo,0.45*kilo),
+          (0.55*kilo,0.55*kilo,0.55*kilo,0.55*kilo),
+          (0.65*kilo,0.65*kilo,0.65*kilo,0.65*kilo),
+          (0.85*kilo,0.85*kilo,0.85*kilo,0.85*kilo),
+          (1.90*kilo,1.90*kilo,1.90*kilo,1.90*kilo))
+
+velocities = (1.500*kilo,
+              1.800*kilo,
+              2.100*kilo,
+              2.100*kilo,
+              2.100*kilo,
+              2.100*kilo,
+              4.500*kilo)
+densities = (1.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo)
+velocities_wb = (1.500*kilo,
+              1.800*kilo,
+              1.800*kilo,
+              1.800*kilo,
+              1.800*kilo,
+              1.800*kilo,
+              1.800*kilo)
+densities_wb = (1.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo)
+finame = ''
+fband = [] 
+def fband_dcomp(finame=finame, fband=fband):
+  foname_fbi = []
+  foname =finame+'fbandpass'
+  for fbi in range(len(fband[1:])):
+    fbi_tag = '%02d'%fbi
+    foname_tmp = finame+'fbandpass'+fbi_tag
+    Flow(foname_tmp,finame,
+       '''
+       $RSFROOT/bin/sfbandpass fhi=%g flo=%g 
+       '''%(fband[fbi+1],fband[fbi]))
+    foname_fbi.append(foname_tmp)
+
+  Flow(foname,foname_fbi,
+       '''
+       cat ${SOURCES[1:%d]} | put label3='Freq band'
+       '''%(len(foname_fbi)) )
+  return foname
+##########################################################
+##nt = 100
+##wdw_xn = 100
+##wdw_x0 = 75
+##wdw_tn = nt
+##wdw_t0 = 10
+
+nt = 300
+wdw_xn = 300
+wdw_x0 = 0
+wdw_tn = nt
+wdw_t0 = 0
+
+def arr2str(array,sep=' '):
+    return string.join(map(str,array),sep)
+
+vstr = arr2str(velocities,',')
+dstr = arr2str(densities,',')
+vstr_wb = arr2str(velocities_wb,',')
+dstr_wb = arr2str(densities_wb,',')
+
+n1 = len(layers[0])
+n2 = len(layers)
+
+Flow('layers.asc',None,
+     '''
+     echo %s
+     n1=%d n2=%d o1=0 d1=%g
+     data_format=ascii_float in=$TARGET     
+     ''' % (string.join(map(arr2str,layers),' '),
+            n1,n2,xmax/(n1-1)))
+Flow('layers','layers.asc','dd form=native')
+
+d = 0.0075*kilo # non-round for reproducibility
+nx = int(1.5+xmax/d)
+nz = int(1.5+zmax/d)
+Flow('refs','layers',
+     '$RSFROOT/bin/sfspline o1=0 d1=%g n1=%d' % (d,nx))
+Flow('dips','refs','deriv scale=y')
+
+Flow('vpmod','refs',
+     '''
+     $RSFROOT/bin/sfunif2 d1=%g n1=%d v00=%s 
+     ''' % (d,nz,vstr))
+Flow('vpmod_wb','refs',
+     '''
+     $RSFROOT/bin/sfunif2 d1=%g n1=%d v00=%s 
+     ''' % (d,nz,vstr_wb))
+
+Flow('rhomod','refs',
+     '''
+     $RSFROOT/bin/sfunif2 d1=%g n1=%d v00=%s 
+     ''' % (d,nz,dstr))
+Flow('rhomod_wb','refs',
+     '''
+     $RSFROOT/bin/sfunif2 d1=%g n1=%d v00=%s 
+     ''' % (d,nz,dstr_wb))
+
+# rho [g/cm^3] , vel [km/s], 
+Flow('blkmod','vpmod rhomod',
+     '''
+     math rho=${SOURCES[1]} output='rho*((input)^2)'
+     ''')
+Flow('blkmod_wb','vpmod_wb rhomod_wb',
+     '''
+     math rho=${SOURCES[1]} output='rho*((input)^2)'
+     ''')
+
+# ------------------------------------------------------------
+par = dict( 
+    nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
+    nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
+    nt=15001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    pclip=99.0,
+    ratio=1.0,
+    jsnap=5000,
+    kt=800,
+    nb=50,
+    drsmpt=50
+    )
+
+# ------------------------------------------------------------
+# set plotting parameters
+fdmod.param(par)
+# ------------------------------------------------------------
+
+#Plot  ('vpmod',fdmod.cgrey('mean=y',par))
+#Result('mod',fdmod.cgrey('mean=y',par))
+
+ns = 151
+nr = 301
+ds = 0.02*kilo
+dr_grid = 3
+rx0 = 3.0*kilo 
+rz0 = wbz
+sx0 = 4.5*kilo
+sz0 = 0.000*kilo
+sz = sz0
+rz = rz0
+
+fdmod.horizontal('rr_all',rz,par)
+
+
+## ------------------------------------------------------------
+# horizontal array @ z=1.5km
+##fdmod.horizontal('tH',rz0,par)
+par['jrH']=dr_grid   # jump (grid points)
+par['orH']=rx0 # origin
+par['nrH']=nr   # number
+##
+### window array
+Flow('rr','rr_all',
+  'window j2=%d min2=%g n2=%d'%
+  (par['jrH'],  # jump
+   par['orH'],  # origin
+   par['nrH'])) # number
+##    
+##    # plot array
+##Plot(  'rH',fdmod.rrplot('',par))
+##    
+##
+## ------------------------------------------------------------
+## make smooth velocity
+#Flow('vsmo','modl',
+#     'smooth rect1=25 rect2=25 repeat=3')
+## ------------------------------------------------------------
+
+# construct wavelet
+fdmod.wavelet('wav_',30,par) 
+
+# transpose wavelet
+Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13 | pad end2=2')      
+
+
+# plot wavelet
+#Result('wav','window n2=4000 |'
+#       + fdmod.waveplot('',par)) 
+
+
+## ------------------------------------------------------------
+
+
+for si in range(ns):
+#for si in [75]:
+####
+  stag='%03d'%si
+  sx = sx0 + si*ds
+  fdmod.point('ss_',sx,sz,par)
+  Flow('ss','ss_','put n2=1')
+
+  Flow('Fdat'+stag+' Fwfl'+stag,'wav blkmod rhomod ss rr',
+      '''
+      awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50
+      ''')
+  Flow('Fdat_nfs'+stag+' Fwfl_nfs'+stag,'wav blkmod rhomod ss rr',
+      '''
+      awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=n nb=50
+      ''')
+
+  Flow('Fdat_wb'+stag+' Fwfl_wb'+stag,'wav blkmod_wb rhomod_wb ss rr',
+      '''
+      awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50
+      ''')
+
+#### window data from the horizontal array
+  Flow('datH'+stag,'Fdat'+stag,
+       '''
+       pad end3=%d |
+       window squeeze=n n1=%d f3=%d j3=%d  |
+       put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
+       '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
+            par['orH'], par['jrH']*par['dx']))
+  Flow('datH_wb'+stag,'Fdat_wb'+stag,
+       '''
+       pad end3=%d |
+       window squeeze=n n1=%d f3=%d j3=%d  |
+       put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
+       '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
+            par['orH'], par['jrH']*par['dx']))
+  Flow('datH_nfs'+stag,'Fdat_nfs'+stag,
+       '''
+       pad end3=%d |
+       window squeeze=n n1=%d f3=%d j3=%d  |
+       put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
+       '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
+            par['orH'], par['jrH']*par['dx']))
+
+##  Result('datH'+stag,'window j2=4 | transp|'
+##         + fdmod.dgrey('pclip=92'%par,par))
+
+
+  Flow('datPP'+stag,'datH'+stag,
+      '''
+      window n3=1 f3=0
+      ''')
+  Flow('datPP_wb'+stag,'datH_wb'+stag,
+      '''
+      window n3=1 f3=0
+      ''')
+  Flow('datPP_nfs'+stag,'datH_nfs'+stag,
+      '''
+      window n3=1 f3=0
+      ''')
+  
+  Flow('datVZ'+stag,'datH'+stag,
+      '''
+      window n3=1 f3=1
+      ''')
+  Flow('datVZ_wb'+stag,'datH_wb'+stag,
+      '''
+      window n3=1 f3=1
+      ''')
+  Flow('datVZ_nfs'+stag,'datH_nfs'+stag,
+      '''
+      window n3=1 f3=1
+      ''')
+  
+  Flow('datVZ_wdw'+stag,'datVZ'+stag+' datVZ_wb'+stag,
+       '''
+       add scale=1.0,-1.0 ${SOURCES[1]} | window n2=%d f2=%d n1=%d f1=%d | costaper nw2=10 nw1=10 
+       '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
+  Flow('datPP_wdw'+stag,'datPP'+stag+' datPP_wb'+stag,
+       '''
+        add scale=1.0,-1.0 ${SOURCES[1]} | window n2=%d f2=%d n1=%d f1=%d | costaper nw1=10 nw2=10
+       '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
+  Flow('datVZ_bpass_wdw'+stag,'datVZ_wdw'+stag,
+        '''
+        $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+        ''')
+  Flow('datPP_bpass_wdw'+stag,'datPP_wdw'+stag,
+        '''
+        $RSFROOT/bin/sfbandpass fhi=60 flo=0.5 
+        ''')
+  
+  eps_ratPPVZ = .0001
+  
+  #fband = [20,30]
+  fband = [0,35,70,99]
+  
+  datPP_bpass = 'datPP_bpass_wdw'+stag
+  datPP_fbi = fband_dcomp(finame=datPP_bpass, fband=fband)
+  
+  datPP_envelope = datPP_fbi+'_envelope' 
+  Flow(datPP_envelope,datPP_fbi,'$RSFROOT/bin/sfenvelope')
+  
+  PPVZ_mag_ord = 1000000.0
+  nax3 = len(fband)-1
+  
+  for nax3i in range (nax3):
+    nax3i_tag = '%02d'%nax3i
+    datPP_envelope_tmp = datPP_envelope+'_tmp'+nax3i_tag
+    
+    Flow(datPP_envelope_tmp,datPP_envelope,
+         '''
+         window n3=1 f3=%d
+         '''%(nax3i))
+  
+  datPPUp_stk_psi = []
+  datPPDw_stk_psi = []
+  
+  for phsh_i in range(90):
+    phsh_itag = '%03d'%(phsh_i)
+    phsh = (phsh_i*2.0*math.pi)/(2.0*45.0)
+    phsh_re = math.cos(phsh-math.pi*0.5)
+    phsh_im = math.sin(phsh-math.pi*0.5)
+    foname_phsh =  'datVZ_bpass_p%s_wdw'%(phsh_itag)+stag
+    finame_phsh =  'datVZ_bpass_wdw'+stag
+    Flow(foname_phsh,finame_phsh,
+         '''
+         fft1 |
+         math output='(%g+I*%g)*(real(input)+imag(input))' | 
+         fft1 inv=y 
+         '''%(phsh_re,phsh_im))
+    ## Frequency band decomposition
+    
+    datVZ_bpass = foname_phsh
+    datVZ_fbi = fband_dcomp(finame=datVZ_bpass, fband=fband)
+    
+    ## Envelope computation
+    
+    datVZ_envelope = datVZ_fbi+'_envelope' 
+    Flow(datVZ_envelope,datVZ_fbi,'$RSFROOT/bin/sfenvelope')
+    
+    ## PP/VZ Envelope Ratio
+    
+    
+    datPPVZ_ratio = datVZ_fbi+'_PPVZ_ratio'
+    datPPVZ_ratio_nax3i = []
+    datVZSc_fbi_nax3i = []
+    datVZSc_fbi = datVZ_fbi+'_Sc'
+    for nax3i in range (nax3):
+      nax3i_tag = '%02d'%nax3i
+      datVZ_fbi_tmp = datVZ_fbi+'_tmp'+nax3i_tag
+      datPP_envelope_tmp = datPP_envelope+'_tmp'+nax3i_tag
+  
+      Flow(datPPVZ_ratio+nax3i_tag,datVZ_envelope+' '+datPP_envelope_tmp,
+           '''
+           window n3=1 f3=%d | math output='1/(input*%g+%g)' |
+           math pp=${SOURCES[1]} output='(input*pp)' 
+           '''%(nax3i,PPVZ_mag_ord,eps_ratPPVZ))
+      datPPVZ_ratio_nax3i.append(datPPVZ_ratio+nax3i_tag)
+  #          clip clip=%g value=0.0 | 
+   
+      Flow(datVZ_fbi_tmp,datVZ_fbi,
+           '''
+           window n3=1 f3=%d
+           '''%(nax3i))
+      Flow(datVZSc_fbi+nax3i_tag,datPPVZ_ratio+nax3i_tag+' '+datVZ_fbi_tmp,
+           '''
+           math vz=${SOURCES[1]} output='1*%g*input*vz'
+           '''%(PPVZ_mag_ord))
+      datVZSc_fbi_nax3i.append(datVZSc_fbi+nax3i_tag)
+    
+    ##ENDLOOP{for nax3i in range (nax3):}
+    Flow(datPPVZ_ratio,datPPVZ_ratio_nax3i,
+         '''
+         cat ${SOURCES[1:%d]}
+         '''%(len(datPPVZ_ratio_nax3i)) )
+    Flow(datVZSc_fbi,datVZSc_fbi_nax3i,
+         '''
+         cat ${SOURCES[1:%d]} | put o3=0
+         '''%(len(datVZSc_fbi_nax3i)) )
+    
+    datPPUp_fbi = 'datPPUp_fbi_wdw'+stag+'_ps%s'%(phsh_itag)
+    datPPDw_fbi = 'datPPDw_fbi_wdw'+stag+'_ps%s'%(phsh_itag)
+    datPPUp_stk_1t = datPPUp_fbi+'_1t'
+    datPPDw_stk_1t = datPPDw_fbi+'_1t'
+    Flow(datPPUp_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,0.5 ${SOURCES[1]}')
+    Flow(datPPDw_fbi,datPP_fbi+' '+datVZSc_fbi,'add scale=0.5,-0.5 ${SOURCES[1]}')
+    Flow(datPPUp_stk_1t,datPPUp_fbi,'stack axis=3 norm=n | window n2=1 f2=75')
+    Flow(datPPDw_stk_1t,datPPDw_fbi,'stack axis=3 norm=n | window n2=1 f2=75')
+    datPPUp_stk_psi.append(datPPUp_stk_1t)
+    datPPDw_stk_psi.append(datPPDw_stk_1t)
+  
+  ##ENDLOOP{for phsh_i in range(16):}
+  
+  Flow('datPPUp_stk_psi',datPPUp_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPUp_stk_psi))
+  Flow('datPPDw_stk_psi',datPPDw_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPDw_stk_psi))
+  
+  Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
+  #Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'add scale=1,-1 ${SOURCES[1]}')
+  Flow('datVZ_VZ_fbi',datVZ_fbi+' '+datVZ_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
+
+##ENDFOR { for si in range(ns):}
+
+## Match filter
+##nt=400
+##Flow('lag.asc',None,
+##     '''
+##     echo %d n1=1 n=%d,100 data_format=ascii_int in=$TARGET
+##     ''' % (nt,nt))
+##Flow('lag','lag.asc','dd form=native')
+##
+##Flow('pef.asc','lag',
+##     '''
+##     echo 1 a0=1 n1=1 data_format=ascii_float in=$TARGET
+##     lag=$SOURCE
+##     ''',stdin=0)
+##Flow('pef','pef.asc','dd form=native')
+##
+##shifts = []
+##datVZSc_stack = 'datVZSc_stack_wdw'+stag
+##datVZSc_fbi = 'datVZ_bpass_p090_wdw075fbandpass_Sc' 
+##Flow(datVZSc_stack,datVZSc_fbi,'stack axis=3 norm=n')
+##nshifts = 3
+##for s in range(0,nshifts):
+##  shift = 'shift+%02d' % s
+##  Flow(shift,datVZSc_stack,
+##       'window n1=%d | pad beg1=%d | put o1=%g' % (nt-nshifts,nshifts,0.005*wdw_t0))
+##  shifts.append(shift)
+##shifts.append(datVZSc_stack)
+##for s in range(nshifts+1,nshifts*2+1):
+##  shift = 'shift+%02d' % s
+##  Flow(shift,datVZSc_stack,
+##       'window n1=%d | pad end1=%d | put o1=%g' % (nt-nshifts,nshifts,0.005*wdw_t0))
+##  shifts.append(shift)
+##
+##Flow('shifts',shifts,'cat ${SOURCES[1:%d]}' % len(shifts))
+##datVZSc_lpf = 'datVZSc_lpf_wdw'+stag
+##Flow('filt '+datVZSc_lpf,'shifts '+datPP_bpass+' pef',
+##     '''
+##     lpf match=${SOURCES[1]} rect1=3 rect2=3 niter=400
+##     pred=${TARGETS[1]} pef=${SOURCES[2]}
+##     ''')
+##datPPUp_lpf = 'datPPUp_lpf_wdw'+stag
+##datPPDw_lpf = 'datPPDw_lpf_wdw'+stag
+##
+##Flow(datPPUp_lpf,datPP_bpass+' '+datVZSc_lpf,'add scale=0.5,0.5 ${SOURCES[1]}')
+##Flow(datPPDw_lpf,datPP_bpass+' '+datVZSc_lpf,'add scale=0.5,-0.5 ${SOURCES[1]}')
+
+
+#####
+
+
+###### SEGY write Phase test
+##
+##
+##segy_finame = 'datPP_bpass_wdw'+stag
+##segy_foname = 'segy_'+segy_finame
+##segy_foname_trcl = 'trcl_'+segy_foname
+##segy_foname_tfile = 'tfile_'+segy_foname
+##
+##Flow(segy_foname_trcl,segy_finame,
+##      '''
+##      < ${SOURCE} $RSFROOT/bin/sfheadermath output=N+1 | sfdd type=int \r 
+##      ''',stdin=0)
+##
+##Flow(segy_foname_tfile,segy_finame+' '+segy_foname_trcl,
+##      '''
+##      < ${SOURCES[0]} $RSFROOT/bin/sfsegyheader tracl=${SOURCES[1]} \r
+##      ''',stdin=0)
+##Flow(segy_foname+'.segy',segy_finame+' '+segy_foname_tfile,
+##      '''
+##      < ${SOURCES[0]} $RSFROOT/bin/sfsegywrite tfile=${SOURCES[1]}
+##      ''',stdin=0)
+##ph = 45
+##segy_finame = 'test_%ddeg.segy'%ph
+##segy_foname = 'datPP_bpass_fp%d_wdw'%(ph)+stag
+##Flow(segy_foname,segy_finame,
+##      '''
+##      < ${SOURCES[0]} $RSFROOT/bin/sfsegyread tfile=tfile.rsf hfile=hfile bfile=bfile endian=1
+##      ''',stdin=0)
+##ph = 90
+##segy_finame = 'test_%ddeg.segy'%ph
+##segy_foname = 'datPP_bpass_fp%d_wdw'%(ph)+stag
+##Flow(segy_foname,segy_finame,
+##      '''
+##      < ${SOURCES[0]} $RSFROOT/bin/sfsegyread tfile=tfile.rsf hfile=hfile bfile=bfile endian=1
+##      ''',stdin=0)
+##
+#################3
+
+End()
