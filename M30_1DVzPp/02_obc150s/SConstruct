@@ -401,12 +401,12 @@ for si in range(ns):
   
   ##ENDLOOP{for phsh_i in range(16):}
   
-  Flow('datPPUp_stk_psi',datPPUp_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPUp_stk_psi))
-  Flow('datPPDw_stk_psi',datPPDw_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPDw_stk_psi))
+  Flow('datPPUp_stk_psi'+stag,datPPUp_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPUp_stk_psi))
+  Flow('datPPDw_stk_psi'+stag,datPPDw_stk_psi,'cat ${SOURCES[1:%d]} | transp plane=32 | put o2=0 d2=1'%len(datPPDw_stk_psi))
   
-  Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
+  Flow('datPP_PP_fbi'+stag,datPP_fbi+' '+datPP_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
   #Flow('datPP_PP_fbi',datPP_fbi+' '+datPP_bpass,'add scale=1,-1 ${SOURCES[1]}')
-  Flow('datVZ_VZ_fbi',datVZ_fbi+' '+datVZ_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
+  Flow('datVZ_VZ_fbi'+stag,datVZ_fbi+' '+datVZ_bpass,'stack axis=3 norm=n | add scale=1,-1 ${SOURCES[1]}')
 
 ##ENDFOR { for si in range(ns):}
 
