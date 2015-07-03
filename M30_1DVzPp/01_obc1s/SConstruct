@@ -628,11 +628,11 @@ wdw_t0 = 0
 ##wdw_t0 = 65
 
 
-Flow('datVZ_wdw'+stag,'datVZ'+stag+'datVZ_wb'+stag,
+Flow('datVZ_wdw'+stag,'datVZ'+stag+' datVZ_wb'+stag,
      '''
      add scale=1.0,-1.0 ${SOURCES[1]} | window n2=%d f2=%d n1=%d f1=%d | costaper nw2=10 nw1=10 
      '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
-Flow('datPP_wdw'+stag,'datPP'+stag+'datPP_wb'+stag,
+Flow('datPP_wdw'+stag,'datPP'+stag+' datPP_wb'+stag,
      '''
       add scale=1.0,-1.0 ${SOURCES[1]} | window n2=%d f2=%d n1=%d f1=%d | costaper nw1=10 nw2=10
      '''%(wdw_xn, wdw_x0, wdw_tn, wdw_t0))
