@@ -7,7 +7,7 @@ from numpy import *
 kilo = 1000
 xmax = 12.0*kilo
 zmax = 2.0*kilo
-wbz = 0.3*kilo
+wbz = 0.15*kilo
 layers = ((wbz,wbz,wbz,wbz),
           (0.45*kilo,0.45*kilo,0.45*kilo,0.45*kilo),
           (0.55*kilo,0.55*kilo,0.55*kilo,0.55*kilo),
@@ -18,16 +18,16 @@ layers = ((wbz,wbz,wbz,wbz),
 velocities = (1.500*kilo,
               1.800*kilo,
               2.100*kilo,
-              2.300*kilo,
-              2.400*kilo,
-              2.600*kilo,
+              2.100*kilo,
+              2.100*kilo,
+              2.100*kilo,
               4.500*kilo)
 densities = (1.000*kilo,
               2.000*kilo,
-              2.200*kilo,
-              2.200*kilo,
-              2.300*kilo,
-              2.100*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
+              2.000*kilo,
               2.000*kilo)
 velocities_wb = (1.500*kilo,
               1.800*kilo,
@@ -103,7 +103,7 @@ Flow('blkmod_wb','vpmod_wb rhomod_wb',
 par = dict( 
     nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
     nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
-    nt=20001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    nt=15001,ot=0.0, dt=0.0001, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=5000,
@@ -486,7 +486,7 @@ def fband_dcomp(finame=finame, fband=fband):
 ##wdw_tn = nt
 ##wdw_t0 = 10
 
-nt = 400
+nt = 300
 wdw_xn = 300
 wdw_x0 = 0
 wdw_tn = nt
