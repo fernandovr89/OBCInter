@@ -142,7 +142,7 @@ par = dict(
     ratio=1.0,
     jsnap=5000,
     kt=800,
-    nb=50,
+    nb=100,
     drsmpt=50
     )
 
@@ -208,7 +208,7 @@ Flow(  'wav','wav_','put n2=1 n3=1 | transp plane=13 | pad end2=2')
 
 
 #for si in range(ns):
-for si in [0,75,150]:
+for si in [75]:
 ####
   stag='%03d'%si
   sx = sx0 + si*ds
@@ -218,19 +218,19 @@ for si in [0,75,150]:
   Flow('Fdat'+stag+' Fwfl'+stag,'wav blkmod rhomod ss'+stag+' rr',
       '''
       awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
-      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50
-      ''')
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=%d abc=y
+      '''%(par['nb']))
   Flow('Fdat_nfs'+stag+' Fwfl_nfs'+stag,'wav blkmod rhomod ss'+stag+' rr',
       '''
       awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
-      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=n nb=50
-      ''')
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=n nb=%d abc=y
+      '''%(par['nb']))
 
   Flow('Fdat_wb'+stag+' Fwfl_wb'+stag,'wav blkmod_wb rhomod_wb ss'+stag+' rr',
       '''
       awesgvxvzpp bulk=${SOURCES[1]} den=${SOURCES[2]} sou=${SOURCES[3]} 
-      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=50
-      ''')
+      rec=${SOURCES[4]} wfl=${TARGETS[1]} free=y nb=%d abc=y
+      '''%(par['nb']))
 
 #### window data from the horizontal array
   Flow('datH'+stag,'Fdat'+stag,
@@ -674,11 +674,11 @@ Flow(finame_match,'dmig_xcr',
 dmig_xcr_p_PPDw = []
 dmig_xcr_m_PPDw = []
 
-for phsh_i in range(90):
+for phsh_i in range(10):
 ##for phsh_i in [30]:
 
   phsh_itag = '%03d'%(phsh_i)
-  phsh = (phsh_i*math.pi)/(45.0)
+  phsh = (phsh_i*math.pi)/(5.0)
   phsh_re = math.cos(phsh-math.pi*0.5)
   phsh_im = math.sin(phsh-math.pi*0.5)
   foname_phsh =  'dmig_PPDw_p%s'%(phsh_itag)
@@ -725,11 +725,11 @@ for phsh_i in range(90):
 ##ENDLOOP{for phsh_i in range(90):}
 Flow('dmig_xcr_p_PPDw',dmig_xcr_p_PPDw,
      '''
-     cat ${SOURCES[1:%d]} | put o3=0 d3=4.0
+     cat ${SOURCES[1:%d]} | put o3=0 d3=36.0
      '''%(len(dmig_xcr_p_PPDw)))
 Flow('dmig_xcr_m_PPDw',dmig_xcr_m_PPDw,
      '''
-     cat ${SOURCES[1:%d]} | put o3=0 d3=4.0
+     cat ${SOURCES[1:%d]} | put o3=0 d3=36.0
      '''%(len(dmig_xcr_m_PPDw)))
 
 ###
