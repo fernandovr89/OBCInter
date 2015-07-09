@@ -243,7 +243,7 @@ for si in [0,75,150]:
   Flow('datH_wb'+stag,'Fdat_wb'+stag,
        '''
        pad end3=%d |
-       window squeeze=n n1=%d f3=%d j3=%d  |
+       window squeeze=n n2=%d f3=%d j3=%d  |
        put o3=%g o1=%g d1=%g  | transp plane=13 | transp plane=23
        '''%(par['kt'],par['nrH'],par['kt'], par['drsmpt'],par['ot'],
             par['orH'], par['jrH']*par['dx']))
@@ -415,29 +415,79 @@ for si in [0,75,150]:
 
 ##ENDFOR { for si in range(ns):}
 
+##### Redatum multiples to primaries
+sp_taper = 5
+timepad = nt
+nrx = 32
+si_ref = 75
+stag_in='%03d'%si_ref
+datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
+datPP_xcr = [] 
+rx_zoff = 133
+Flow('datPPDw_pad'+stag_in,datPPDw_fbi_in,
+  '''
+   stack axis=3 norm=n | pad end2=1 end1=1 | window f2=%d n2=%d |  costaper nw2=%d | pad beg2=%d end2=%d
+  '''%(rx_zoff-nrx,nrx*2,sp_taper,rx_zoff-nrx,nr-rx_zoff-nrx))
+
+for rxi in range (nrx*2+1):
+#for rxi in [0,32,64]:
+  trc_tag = '%03d'%rxi
+  if rxi < nrx+1:
+    Flow('datPP_wb_rev'+stag_in+'t'+trc_tag,'datPP_wb'+stag_in,
+        '''
+        costaper nw2=%d | window n2=%d f2=%d | pad end2=%d | reverse which=1 opt=n | put o2=%g
+        '''%(sp_taper,nr-(nrx-rxi),nrx-rxi,nrx-rxi,rx0))
+  else:
+    Flow('datPP_wb_rev'+stag_in+'t'+trc_tag,'datPP_wb'+stag_in,
+        '''
+       costaper nw2=%d | window n2=%d f2=0 | pad beg2=%d | reverse which=1 opt=n | put o2=%g
+        '''%(sp_taper,nr-(rxi-nrx),rxi-nrx,rx0))
+
+  Flow('datPP_xcr'+stag_in+'t'+trc_tag,'datPPDw_pad'+stag_in+' datPP_wb_rev'+stag_in+'t'+trc_tag,
+      '''
+      $RSFROOT/bin/sfconv filt=${SOURCES[0]} < ${SOURCES[1]} each=y trans=y | window min1=0 | stack axis=2 norm=n
+      ''',stdin=0)
+  datPP_xcr.append('datPP_xcr'+stag_in+'t'+trc_tag)
+##ENDLOOP{for rxi in range (nrx*2+1):}
+#      $RSFROOT/bin/sfconvolve2 flt=${SOURCES[0]} < ${SOURCES[1]} | window min1=0.0 | stack axis=2 norm=n 
+
+Flow('datPP_xcr'+stag_in,datPP_xcr,
+  '''
+  cat ${SOURCES[1:%d]} | window
+  '''%(len(datPP_xcr)))
+
 ######## Create N shots from 1D shot
 #sx0 = sx0 
 #rx0 = rx0
-nrx = 32
 drx = 0.0225*kilo
 dsx= ds
-si_ref = 75
+mig_dsx= 0.0225*kilo
 nrxi0 = int((sx0+si_ref*dsx-(rx0+nrx*drx))/drx)
 phsh = 30
-stag_in='%03d'%si_ref
+#stag_in='%03d'%si_ref
 phsh_itag = '%03d'%phsh
 datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
 datPP_nfs_in = 'datPP_nfs'+stag_in
+datPP_xcr_in = 'datPP_xcr'+stag_in
+
 datPP_nfs_shof = []
-for si in range(ns):
+datPP_xcr_shof = []
+datPPDw_shof = []
+
+mig_ns = 134
+
+mig_noff = nrx*2 + 1
+
+for si in range(mig_ns):
 #for si in [0,75,150]:
 ####
   stag='%03d'%si
-  sx = sx0 + si*dsx
+  sx = sx0 + si*mig_dsx
   nrxi = int((sx-rx0-nrx*drx)/drx)
   rx0_out = rx0+nrxi*drx
   datPPDw_fbi_out = 'datPPDw_s'+stag
   datPP_nfs_out = 'datPP_nfs_s'+stag
+  datPP_xcr_out = 'datPP_xcr_s'+stag
 
   Flow(datPPDw_fbi_out,datPPDw_fbi_in,
   '''
@@ -446,6 +496,11 @@ for si in range(ns):
   costaper nw1=10 nw2=10 |
   put o2=%g
   '''%(nrxi0,nrx*2+1,rx0_out))
+  Flow(datPP_xcr_out,datPP_xcr_in,
+  '''
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(rx0_out))
   Flow(datPP_nfs_out,datPP_nfs_in,
   '''
   window f2=%d n2=%d |
@@ -453,6 +508,8 @@ for si in range(ns):
   put o2=%g 
   '''%(nrxi0,nrx*2+1,rx0_out))
   datPP_nfs_shof.append(datPP_nfs_out)
+  datPP_xcr_shof.append(datPP_xcr_out)
+  datPPDw_shof.append(datPPDw_fbi_out)
 
  
 ##ENDLOOP{for si in range(ns):}
@@ -462,22 +519,41 @@ for si in range(ns):
 Flow('datPP_nfs_shof',datPP_nfs_shof,
   '''
   cat ${SOURCES[1:%d]} |
-  put n3=151 n2=65 | transp plane=23 |
-  put n3=65 o3=-720.0 d3=22.5 n2=151 o2=4500 d2=20.0
-  unit1=s unit2=m unit3=m label1="Time" label2="ShotPosition" label3="Offset" 
-  '''%(len(datPP_nfs_shof)))
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+Flow('datPPDw_shof',datPPDw_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+
+Flow('datPP_xcr_shof',datPP_xcr_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+
+#  put n3=151 n2=151 | transp plane=23 |
+
+#Flow('datPP_nfs_shof',datPP_nfs_shof,
+#  '''
+#  cat ${SOURCES[1:%d]} |
+#  put n3=151 n2=65 | transp plane=23 |
+#  put n3=65 o3=-720.0 d3=22.5 n2=151 o2=4500 d2=20.0
+#  unit1=s unit2=m unit3=m label1="Time" label2="ShotPosition" label3="Offset" 
+#  '''%(len(datPP_nfs_shof)))
+
 #|
 #  window min3=-20.0 max3=20.0
 
-mig_dz=20.0000
-mig_dx=20.000
-#mig_xmin=3.
-#mig_xmax=9.
-#mig_zmin=0.35
-#mig_zmax=1.5
+mig_dz=7.500
+mig_dx=7.500
 
 
-Flow('xs',None,'math n1=%d o1=%g d1=%g output=x1' % (ns,sx0,dsx))
+Flow('xs',None,'math n1=%d o1=%g d1=%g output=x1' % (mig_ns,sx0,mig_dsx))
 Flow('zs','xs','math output=%g' % (sz0))
 Flow('ys','xs','math output=0')
 Flow('scoord','zs xs ys','cat axis=2 ${SOURCES[1]} ${SOURCES[2]} | transp')
@@ -494,7 +570,7 @@ Flow('time0s tdl0s tds0s','vpmodsmth scoord',
      put d3=%g o3=.0 label3= unit3= |
      $RSFROOT/bin/sfeikods shotfile=${SOURCES[1]} tdl1=${TARGETS[1]} tds1=${TARGETS[2]} b1=2 b2=2 |
      put o4=%g d4=%g | window 
-     ''' % (mig_dx,sx0,dsx))
+     ''' % (mig_dx,sx0,mig_dsx))
 Flow('time0r tdl0r tds0r','vpmodsmth rcoord',
      '''
      put d3=%g o3=0. label3= unit3= |
@@ -504,21 +580,30 @@ Flow('time0r tdl0r tds0r','vpmodsmth rcoord',
 
 Flow('dmig_nfs','datPP_nfs_shof time0s tds0s time0r tds0r',
      '''
-     window n2=151 n3=1 f2=0 f3=33  | 
-     $RSFROOT/bin/sfkirmigsr aperture=5.0 tau=0.0  
+     window n2=%d n3=%d j3=1 f2=0 f3=0  | 
+     $RSFROOT/bin/sfkirmigsr aperture=45.0 tau=0.0 cmp=y 
      stable=${SOURCES[1]} sderiv=${SOURCES[2]} 
-     rtable=${SOURCES[3]} rderiv=${SOURCES[4]}
-     ''')
+     rtable=${SOURCES[3]} rderiv=${SOURCES[4]} |
+     $RSFROOT/bin/sfhalfint adj=y inv=y
+     '''%(mig_noff,mig_ns))
+Flow('dmig_PPDw','datPPDw_shof time0s tds0s time0r tds0r',
+     '''
+     window n2=%d n3=%d j3=1 f2=0 f3=0  | 
+     $RSFROOT/bin/sfkirmigsr aperture=45.0 tau=0.0 cmp=y 
+     stable=${SOURCES[1]} sderiv=${SOURCES[2]} 
+     rtable=${SOURCES[3]} rderiv=${SOURCES[4]} |
+     $RSFROOT/bin/sfhalfint adj=y inv=y
+     '''%(mig_noff,mig_ns))
 
-# |
-#     $RSFROOT/bin/sfhalfint adj=y inv=y
+Flow('dmig_xcr','datPP_xcr_shof time0s tds0s time0s tds0s',
+     '''
+     window n2=%d n3=%d j3=1 f2=0 f3=0  | 
+     $RSFROOT/bin/sfkirmigsr aperture=45.0 tau=0.0 cmp=y 
+     stable=${SOURCES[1]} sderiv=${SOURCES[2]} 
+     rtable=${SOURCES[3]} rderiv=${SOURCES[4]} |
+     $RSFROOT/bin/sfhalfint adj=y inv=y
+     '''%(mig_noff,mig_ns))
 
-##Flow('dmig_rg_nfs','rg_nfs_muted_tomig time0s tds0s time0r tds0r',
-##     '''
-##     $RSFROOT/bin/sfkirmigsr aperture=10.0 tau=0.0 cmp=n  
-##     stable=${SOURCES[1]} sderiv=${SOURCES[2]} 
-##     rtable=${SOURCES[3]} rderiv=${SOURCES[4]}
-##     ''')
 
 
 
