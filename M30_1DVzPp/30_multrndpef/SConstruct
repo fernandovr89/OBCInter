@@ -1,0 +1,270 @@
+from rsf.proj import *
+from math import *
+from numpy import *
+
+#Flow('datPP_xcr_shof','../03_obcNref/datPP_xcr_shof.rsf','cp')
+#Flow('datPPDw_shof','../03_obcNref/datPPDw_shof.rsf','cp')
+
+Flow('datPP_xcr_shof','../04_obc1ref/datPP_xcr_shof.rsf','cp')
+Flow('datPPDw_shof','../04_obc1ref/datPPDw_shof.rsf','cp')
+Flow('datPPUp_shof','../04_obc1ref/datPPUp_shof.rsf','cp')
+
+#### Anti multiples tau p in cmp domain
+dv=40
+nv=251
+v0=1400
+water_vel = 3000
+vscan='$RSFROOT/bin/sfvscan v0=%d dv=%d nv=%d semblance=y half=y '%(v0,dv,nv)
+pick='$RSFROOT/bin/sfpick rect1=10 rect2=10 gate=5'
+water_vel_nmo = '$RSFROOT/bin/sfnmostretch half=y v0=%g'%(water_vel)
+water_vel_inmo = '$RSFROOT/bin/sfnmostretch inv=y half=y v0=%g | $RSFROOT/bin/sfmutter v0=3800 '%(water_vel)
+
+
+window_1D = 'window n3=1 f3=133 | '
+taper = 'costaper nw2=10 nw1=10 | '
+
+
+
+Flow('dcmpPP_xcr_shof mkcmpPP_xcr_shof','datPP_xcr_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
+Flow('dcmpPPDw_shof mkcmpPPDw_shof','datPPDw_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
+
+finame = 'dcmpPP_xcr_shof'
+foname = finame+'_vscan'
+toOverlay00 = foname
+Flow(foname,finame,window_1D+vscan)
+Plot(toOverlay00,
+       '''
+       grey color=j allpos=y
+       title="Velocity Scan - CMP" 
+       ''')
+
+finame = foname
+foname = 'dcmpPP_xcr_shof_pick'
+Flow(foname,finame,pick)
+
+pick_vscan_plot = 'graph yreverse=y transp=y min2=%g max2=%g pad=n plotcol=0 plotfat=7 wanttitle=n wantaxis=n'%(v0,v0+dv*nv)
+toOverlay01 = foname
+Plot(toOverlay01,pick_vscan_plot)
+Plot(toOverlay00+'_pick',[toOverlay00,toOverlay01],'Overlay')
+
+finame = 'dcmpPP_xcr_shof'
+foname = finame+'_nmo'
+Flow(foname,finame,window_1D+taper+water_vel_nmo)
+
+#### Radon
+x0=1.
+
+p0=-.00000091
+np=201
+pmax = .00000091
+dp=(pmax-p0)/(np-1)
+
+ox=-720.0
+dx=22.5
+nx=65
+
+radono='''
+       $RSFROOT/bin/sfradon  np=%d p0=%g dp=%g x0=%d parab=y
+       ''' %(np,p0,dp,x0)
+radonoinv='''
+       $RSFROOT/bin/sfradon  adj=n nx=%d ox=%g dx=%g x0=%d parab=y
+       ''' %(nx,ox,dx,x0)
+substract= 'add scale=1.0,-1.0 ${SOURCES[1]}'
+
+
+finame = 'dcmpPP_xcr_shof_nmo'
+foname = finame+'_radon'
+Flow(foname,finame,radono)
+finame = 'dcmpPP_xcr_shof_nmo_radon'
+foname = 'dcmpPP_xcr_shof_nmo_iradon'
+Flow(foname,finame,radonoinv)
+
+#### QC inverse radon
+qc_clip_PPnmo = 5999999999999.99
+
+finame = 'dcmpPP_xcr_shof_nmo_iradon dcmpPP_xcr_shof_nmo'
+foname = 'qc_dcmpPP_iradon'
+Flow(foname,finame,substract)
+
+Plot(foname,
+     '''
+     grey clip=%g title=Difference
+     '''%(qc_clip_PPnmo))
+Plot('dcmpPP_xcr_shof_nmo',
+     '''
+     grey clip=%g title=Original
+     '''%(qc_clip_PPnmo))
+Plot('QC_irandon',['dcmpPP_xcr_shof_nmo',foname,],'SideBySideIso')
+#finame = 'dcmpPP_xcr_shof'
+#foname = finame+'_radon'
+#Flow(foname,finame,window_1D+radono)
+
+#### mute to keep multiples
+t0_mul = 0.41
+v0_mul = .00010030 
+
+mute_mult = '$RSFROOT/bin/sfmutter t0=%g v0=%g'%(t0_mul,v0_mul)
+finame = 'dcmpPP_xcr_shof_nmo_radon'
+foname = 'dcmpPP_mute_mul'
+Flow(foname,finame,mute_mult)
+finame = foname
+foname = finame+'_iradon'
+Flow(foname,finame,radonoinv)
+finame = 'dcmpPP_xcr_shof_nmo '+foname
+foname = 'dcmpPP_subs'
+Flow(foname,finame,substract)
+Plot(foname,
+     '''
+     grey clip=%g title=No_Mult
+     '''%(qc_clip_PPnmo))
+Plot('QC_NoMult',['dcmpPP_xcr_shof_nmo',foname,],'SideBySideIso')
+
+finame = foname
+foname = finame+'_inmo'
+Flow(foname,finame,water_vel_inmo)
+Plot(foname,
+     '''
+     grey clip=%g title=Inver_NMO
+     '''%(qc_clip_PPnmo))
+Plot('dcmpPP_xcr_shof',
+     window_1D+
+     '''
+     grey clip=%g title=CMP_DATA
+     '''%(qc_clip_PPnmo))
+Plot('QC_InverNMO',['dcmpPP_xcr_shof',foname,],'SideBySideIso')
+
+
+
+################### Multiple suppression PEF random offset
+noff = 65
+p_spray = 'spray axis=3 n=%d o=0 d=1 label=Sample'%(noff)
+p_rnd = 'window n1=1 | noise rep=y seed=2015'
+p_hsort = 'headersort head=${SOURCES[1]}'
+p_smt = 'smooth rect2=2 rect3=2'
+
+vel_nmo = 3500
+p_nmo = '$RSFROOT/bin/sfnmostretch half=y v0=%g'%(vel_nmo)
+p_inmo = '$RSFROOT/bin/sfnmostretch inv=y half=y v0=%g | $RSFROOT/bin/sfmutter v0=3800 '%(vel_nmo)
+finame = 'dcmpPP_xcr_shof'
+foname = finame+'_nmo_vi'
+Flow(foname,finame,window_1D+taper+p_nmo)
+finame = 'dcmpPP_xcr_shof_nmo_vi'
+foname = finame+'_3d'
+Flow(foname,finame,p_spray)
+finame = foname 
+foname = finame+'_off'
+Flow(foname,finame,p_rnd)
+Flow('inv3',foname,'put d1=1 o1=0 | math output="x1+65*x2" | spray axis=1 n=1 | headersort head=$SOURCE')
+
+finame = 'dcmpPP_xcr_shof_nmo_vi_3d '+foname 
+foname = 'dcmpPP_xcr_shof_nmo_rnd'
+Flow(foname,finame,p_hsort)
+finame = foname 
+foname = 'dcmpPP_xcr_shof_nmo_smt'
+Flow(foname,finame,p_smt)
+Flow('back',foname+' inv3','headersort head=${SOURCES[1]} | stack axis=3')
+Flow('dif','dcmpPP_xcr_shof_nmo_vi back','add scale=1,-1 ${SOURCES[1]}')
+Flow('dif_inmo','dif',taper+p_inmo)
+
+##### Match filter multiples
+#vel_nmo = 4500
+time_lag = 301
+#time_lag = 150
+
+p_nmo = '$RSFROOT/bin/sfnmostretch half=y v0=%g'%(vel_nmo)
+p_inmo = '$RSFROOT/bin/sfnmostretch inv=y half=y v0=%g | $RSFROOT/bin/sfmutter v0=3800 '%(vel_nmo)
+p_shifttime = 'pad beg1=13 | put o1=0.0 | window n1=301'
+
+finame = 'dcmpPPDw_shof'
+foname = finame+'_nmo_vi'
+Flow(foname,finame,window_1D+taper+p_nmo)
+
+finame_dat = 'dcmpPP_xcr_shof_nmo_vi'
+finame = foname
+foname = finame+'_st'
+Flow(foname,finame,p_shifttime)
+finame_mod = foname
+
+Flow('lag.asc',None,
+     '''
+     echo %d n1=1 n=%d,100 data_format=ascii_int in=$TARGET
+     ''' % (time_lag,time_lag))
+Flow('lag','lag.asc','dd form=native')
+
+Flow('pef.asc','lag',
+     '''
+     echo -1 a0=1 n1=1 data_format=ascii_float in=$TARGET
+     lag=$SOURCE
+     ''',stdin=0)
+Flow('pef','pef.asc','dd form=native')
+finame_match = 'd_dat'
+Flow(finame_match,finame_dat,
+     '''
+     window 
+     ''')
+d_dat_p_mod = []
+d_dat_m_mod = []
+
+#for phsh_i in range(90):
+for phsh_i in [23]:
+
+  phsh_itag = '%03d'%(phsh_i)
+  phsh = (phsh_i*math.pi)/(45.0)
+  phsh_re = math.cos(phsh-math.pi*0.5)
+  phsh_im = math.sin(phsh-math.pi*0.5)
+  foname_phsh =  finame_mod+'_ps%s'%(phsh_itag)
+  finame_phsh =  finame_mod
+#       window n1=150 |
+
+  Flow(foname_phsh,finame_phsh,
+       '''
+       fft1 |
+       math output='(%g+I*%g)*(real(input)+imag(input))' | 
+       fft1 inv=y 
+       '''%(phsh_re,phsh_im))
+
+  shifts = []
+  finame_lpf = foname_phsh
+  nshifts = 15
+  for s in range(0,nshifts):
+    shift = 'shift+%02d_ps'%(s)+phsh_itag
+    Flow(shift,finame_lpf,
+         'window n1=%d | pad beg1=%d | put o1=%g' % (time_lag-nshifts,nshifts,0.000*0))
+    shifts.append(shift)
+  shifts.append(finame_lpf)
+  for s in range(nshifts+1,nshifts*2+1):
+    shift = 'shift+%02d'%(s)+phsh_itag
+    Flow(shift,finame_lpf,
+         'window n1=%d | pad end1=%d | put o1=%g' % (time_lag-nshifts,nshifts,0.000*0))
+    shifts.append(shift)
+
+  Flow('shifts_ps'+phsh_itag,shifts,'cat ${SOURCES[1:%d]}' % len(shifts))
+  foname_lpf = finame_mod+'_lpf_ps'+phsh_itag
+  filt_lpf = 'filt_ps'+phsh_itag
+  Flow(filt_lpf+' '+foname_lpf,'shifts_ps'+phsh_itag+' '+finame_match+' pef',
+       '''
+       lpf match=${SOURCES[1]} rect1=17 rect2=17 niter=400
+       pred=${TARGETS[1]} pef=${SOURCES[2]}
+       ''')
+  d_dat_p_mod_lpf = 'd_dat_p_mod_lpf_ps'+phsh_itag
+  d_dat_m_mod_lpf = 'd_dat_m_mod_lpf_ps'+phsh_itag
+
+  Flow(d_dat_p_mod_lpf,finame_match+' '+foname_lpf,'add scale=1.0,1.0 ${SOURCES[1]}')
+  Flow(d_dat_m_mod_lpf,finame_match+' '+foname_lpf,'add scale=1.0,-1.0 ${SOURCES[1]}')
+  d_dat_p_mod.append(d_dat_p_mod_lpf)
+  d_dat_m_mod.append(d_dat_m_mod_lpf)
+
+Flow('d_dat_p_mod',d_dat_p_mod,
+     '''
+     cat ${SOURCES[1:%d]} | put o3=0 d3=4.0
+     '''%(len(d_dat_p_mod)))
+Flow('d_dat_m_mod',d_dat_m_mod,
+     '''
+     cat ${SOURCES[1:%d]} | put o3=0 d3=4.0
+     '''%(len(d_dat_m_mod)))
+
+finame = 'd_dat_m_mod'
+foname = 'dat_lpf_inmo'
+Flow(foname,finame,taper+p_inmo)
+
+End()

@@ -1,0 +1,130 @@
+from rsf.proj import *
+
+Flow('datPP_xcr_shof','../03_obcNref/datPP_xcr_shof.rsf','cp')
+#Flow('datPP_xcr_shof','../04_obc1ref/datPP_xcr_shof.rsf','cp')
+
+#### Anti multiples tau p in cmp domain
+dv=40
+nv=251
+v0=1400
+water_vel = 3000
+vscan='$RSFROOT/bin/sfvscan v0=%d dv=%d nv=%d semblance=y half=y '%(v0,dv,nv)
+pick='$RSFROOT/bin/sfpick rect1=10 rect2=10 gate=5'
+water_vel_nmo = '$RSFROOT/bin/sfnmostretch half=y v0=%g'%(water_vel)
+water_vel_inmo = '$RSFROOT/bin/sfnmostretch inv=y half=y v0=%g | $RSFROOT/bin/sfmutter v0=3800 '%(water_vel)
+
+
+window_1D = 'window n3=1 f3=133 | '
+taper = 'costaper nw2=10 nw1=10 | '
+
+
+
+Flow('dcmpPP_xcr_shof mkcmpPP_xcr_shof','datPP_xcr_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
+finame = 'dcmpPP_xcr_shof'
+foname = finame+'_vscan'
+toOverlay00 = foname
+Flow(foname,finame,window_1D+vscan)
+Plot(toOverlay00,
+       '''
+       grey color=j allpos=y
+       title="Velocity Scan - CMP" 
+       ''')
+
+finame = foname
+foname = 'dcmpPP_xcr_shof_pick'
+Flow(foname,finame,pick)
+
+pick_vscan_plot = 'graph yreverse=y transp=y min2=%g max2=%g pad=n plotcol=0 plotfat=7 wanttitle=n wantaxis=n'%(v0,v0+dv*nv)
+toOverlay01 = foname
+Plot(toOverlay01,pick_vscan_plot)
+Plot(toOverlay00+'_pick',[toOverlay00,toOverlay01],'Overlay')
+
+finame = 'dcmpPP_xcr_shof'
+foname = finame+'_nmo'
+Flow(foname,finame,window_1D+taper+water_vel_nmo)
+
+#### Radon
+x0=1.
+
+p0=-.00000091
+np=201
+pmax = .00000091
+dp=(pmax-p0)/(np-1)
+
+ox=-720.0
+dx=22.5
+nx=65
+
+radono='''
+       $RSFROOT/bin/sfradon  np=%d p0=%g dp=%g x0=%d parab=y
+       ''' %(np,p0,dp,x0)
+radonoinv='''
+       $RSFROOT/bin/sfradon  adj=n nx=%d ox=%g dx=%g x0=%d parab=y
+       ''' %(nx,ox,dx,x0)
+substract= 'add scale=1.0,-1.0 ${SOURCES[1]}'
+
+
+finame = 'dcmpPP_xcr_shof_nmo'
+foname = finame+'_radon'
+Flow(foname,finame,radono)
+finame = 'dcmpPP_xcr_shof_nmo_radon'
+foname = 'dcmpPP_xcr_shof_nmo_iradon'
+Flow(foname,finame,radonoinv)
+
+#### QC inverse radon
+qc_clip_PPnmo = 5999999999999.99
+
+finame = 'dcmpPP_xcr_shof_nmo_iradon dcmpPP_xcr_shof_nmo'
+foname = 'qc_dcmpPP_iradon'
+Flow(foname,finame,substract)
+
+Plot(foname,
+     '''
+     grey clip=%g title=Difference
+     '''%(qc_clip_PPnmo))
+Plot('dcmpPP_xcr_shof_nmo',
+     '''
+     grey clip=%g title=Original
+     '''%(qc_clip_PPnmo))
+Plot('QC_irandon',['dcmpPP_xcr_shof_nmo',foname,],'SideBySideIso')
+#finame = 'dcmpPP_xcr_shof'
+#foname = finame+'_radon'
+#Flow(foname,finame,window_1D+radono)
+
+#### mute to keep multiples
+t0_mul = 0.41
+v0_mul = .00010030 
+
+mute_mult = '$RSFROOT/bin/sfmutter t0=%g v0=%g'%(t0_mul,v0_mul)
+finame = 'dcmpPP_xcr_shof_nmo_radon'
+foname = 'dcmpPP_mute_mul'
+Flow(foname,finame,mute_mult)
+finame = foname
+foname = finame+'_iradon'
+Flow(foname,finame,radonoinv)
+finame = 'dcmpPP_xcr_shof_nmo '+foname
+foname = 'dcmpPP_subs'
+Flow(foname,finame,substract)
+Plot(foname,
+     '''
+     grey clip=%g title=No_Mult
+     '''%(qc_clip_PPnmo))
+Plot('QC_NoMult',['dcmpPP_xcr_shof_nmo',foname,],'SideBySideIso')
+
+finame = foname
+foname = finame+'_inmo'
+Flow(foname,finame,water_vel_inmo)
+Plot(foname,
+     '''
+     grey clip=%g title=Inver_NMO
+     '''%(qc_clip_PPnmo))
+Plot('dcmpPP_xcr_shof',
+     window_1D+
+     '''
+     grey clip=%g title=CMP_DATA
+     '''%(qc_clip_PPnmo))
+Plot('QC_InverNMO',['dcmpPP_xcr_shof',foname,],'SideBySideIso')
+
+
+
+End()
