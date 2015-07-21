@@ -7,13 +7,13 @@ from numpy import *
 kilo = 1000
 xmax = 12.0*kilo
 zmax = 2.0*kilo
-wbz = 0.10*kilo
+wbz = 0.20*kilo
 layers = ((wbz,wbz,wbz,wbz),
-          (0.35*kilo,0.35*kilo,0.35*kilo,0.35*kilo),
-          (0.55*kilo,0.55*kilo,0.55*kilo,0.55*kilo),
+          (0.45*kilo,0.45*kilo,0.45*kilo,0.45*kilo),
+          (0.65*kilo,0.65*kilo,0.65*kilo,0.65*kilo),
           (0.85*kilo,0.85*kilo,0.85*kilo,0.85*kilo),
-          (0.95*kilo,0.95*kilo,0.95*kilo,0.95*kilo),
-          (1.25*kilo,1.25*kilo,1.25*kilo,1.25*kilo),
+          (1.15*kilo,1.15*kilo,1.15*kilo,1.15*kilo),
+          (1.35*kilo,1.35*kilo,1.35*kilo,1.35*kilo),
           (1.90*kilo,1.90*kilo,1.90*kilo,1.90*kilo))
 
 velocities = (1.500*kilo,
@@ -72,7 +72,7 @@ def fband_dcomp(finame=finame, fband=fband):
 ##wdw_tn = nt
 ##wdw_t0 = 10
 
-nt = 300
+nt = 400
 wdw_xn = 300
 wdw_x0 = 0
 wdw_tn = nt
@@ -137,7 +137,7 @@ Flow('blkmod_wb','vpmod_wb rhomod_wb',
 par = dict( 
     nx=eval('%g'%(nx)), ox=0.0 ,dx=eval('%g'%(d)), lx='x',ux='m',
     nz=eval('%g'%(nz)), oz=0.0, dz=eval('%g'%(d)), lz='z',uz='m',
-    nt=15001,ot=0.0, dt=0.0001, lt='t',ut='s',
+    nt=20001,ot=0.0, dt=0.0001, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=5000,
@@ -467,12 +467,15 @@ phsh = 30
 #stag_in='%03d'%si_ref
 phsh_itag = '%03d'%phsh
 datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
+datPPUp_fbi_in = 'datPPUp_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
+
 datPP_nfs_in = 'datPP_nfs'+stag_in
 datPP_xcr_in = 'datPP_xcr'+stag_in
 
 datPP_nfs_shof = []
 datPP_xcr_shof = []
 datPPDw_shof = []
+datPPUp_shof = []
 
 mig_ns = 134
 
@@ -486,6 +489,7 @@ for si in range(mig_ns):
   nrxi = int((sx-rx0-nrx*drx)/drx)
   rx0_out = rx0+nrxi*drx
   datPPDw_fbi_out = 'datPPDw_s'+stag
+  datPPUp_fbi_out = 'datPPUp_s'+stag
   datPP_nfs_out = 'datPP_nfs_s'+stag
   datPP_xcr_out = 'datPP_xcr_s'+stag
 
@@ -496,6 +500,14 @@ for si in range(mig_ns):
   costaper nw1=10 nw2=10 |
   put o2=%g
   '''%(nrxi0,nrx*2+1,rx0_out))
+  Flow(datPPUp_fbi_out,datPPUp_fbi_in,
+  '''
+  stack axis=3 norm=n | 
+  window f2=%d n2=%d |
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(nrxi0,nrx*2+1,rx0_out))
+
   Flow(datPP_xcr_out,datPP_xcr_in,
   '''
   costaper nw1=10 nw2=10 |

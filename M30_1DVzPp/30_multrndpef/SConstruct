@@ -4,6 +4,7 @@ from numpy import *
 
 #Flow('datPP_xcr_shof','../03_obcNref/datPP_xcr_shof.rsf','cp')
 #Flow('datPPDw_shof','../03_obcNref/datPPDw_shof.rsf','cp')
+#Flow('datPPUp_shof','../03_obcNref/datPPUp_shof.rsf','cp')
 
 Flow('datPP_xcr_shof','../04_obc1ref/datPP_xcr_shof.rsf','cp')
 Flow('datPPDw_shof','../04_obc1ref/datPPDw_shof.rsf','cp')
@@ -27,6 +28,7 @@ taper = 'costaper nw2=10 nw1=10 | '
 
 Flow('dcmpPP_xcr_shof mkcmpPP_xcr_shof','datPP_xcr_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
 Flow('dcmpPPDw_shof mkcmpPPDw_shof','datPPDw_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
+Flow('dcmpPPUp_shof mkcmpPPUp_shof','datPPUp_shof','$RSFROOT/bin/sfshot2cmp mask=${TARGETS[1]} positive=n half=y')
 
 finame = 'dcmpPP_xcr_shof'
 foname = finame+'_vscan'
@@ -168,19 +170,22 @@ Flow('dif_inmo','dif',taper+p_inmo)
 
 ##### Match filter multiples
 #vel_nmo = 4500
-time_lag = 301
+time_lag = 400
 #time_lag = 150
 
 p_nmo = '$RSFROOT/bin/sfnmostretch half=y v0=%g'%(vel_nmo)
 p_inmo = '$RSFROOT/bin/sfnmostretch inv=y half=y v0=%g | $RSFROOT/bin/sfmutter v0=3800 '%(vel_nmo)
-p_shifttime = 'pad beg1=13 | put o1=0.0 | window n1=301'
+p_shifttime = 'pad beg1=13 | put o1=0.0 | window n1=%d'%(time_lag)
 
 finame = 'dcmpPPDw_shof'
 foname = finame+'_nmo_vi'
 Flow(foname,finame,window_1D+taper+p_nmo)
+finame = 'dcmpPPUp_shof'
+foname = finame+'_nmo_vi'
+Flow(foname,finame,window_1D+taper+p_nmo)
 
 finame_dat = 'dcmpPP_xcr_shof_nmo_vi'
-finame = foname
+finame = 'dcmpPPDw_shof_nmo_vi'
 foname = finame+'_st'
 Flow(foname,finame,p_shifttime)
 finame_mod = foname
@@ -200,8 +205,8 @@ Flow('pef','pef.asc','dd form=native')
 finame_match = 'd_dat'
 Flow(finame_match,finame_dat,
      '''
-     window 
-     ''')
+     window n1=%d 
+     '''%(time_lag))
 d_dat_p_mod = []
 d_dat_m_mod = []
 
@@ -214,14 +219,14 @@ for phsh_i in [23]:
   phsh_im = math.sin(phsh-math.pi*0.5)
   foname_phsh =  finame_mod+'_ps%s'%(phsh_itag)
   finame_phsh =  finame_mod
-#       window n1=150 |
 
   Flow(foname_phsh,finame_phsh,
        '''
+       window n1=%d | 
        fft1 |
        math output='(%g+I*%g)*(real(input)+imag(input))' | 
        fft1 inv=y 
-       '''%(phsh_re,phsh_im))
+       '''%(time_lag,phsh_re,phsh_im))
 
   shifts = []
   finame_lpf = foname_phsh
@@ -233,7 +238,7 @@ for phsh_i in [23]:
     shifts.append(shift)
   shifts.append(finame_lpf)
   for s in range(nshifts+1,nshifts*2+1):
-    shift = 'shift+%02d'%(s)+phsh_itag
+    shift = 'shift+%02d_ps'%(s)+phsh_itag
     Flow(shift,finame_lpf,
          'window n1=%d | pad end1=%d | put o1=%g' % (time_lag-nshifts,nshifts,0.000*0))
     shifts.append(shift)
@@ -266,5 +271,86 @@ Flow('d_dat_m_mod',d_dat_m_mod,
 finame = 'd_dat_m_mod'
 foname = 'dat_lpf_inmo'
 Flow(foname,finame,taper+p_inmo)
+
+
+############### Clean PP Upgoing
+finame_dat = 'dcmpPPUp_shof_nmo_vi'
+#finame = foname
+#foname = finame+'_st'
+#Flow(foname,finame,p_shifttime)
+foname = 'dcmpPPDw_shof_nmo_vi'
+finame_mod = foname
+
+Flow('lag.asc',None,
+     '''
+     echo %d n1=1 n=%d,100 data_format=ascii_int in=$TARGET
+     ''' % (time_lag,time_lag))
+Flow('lag','lag.asc','dd form=native')
+
+Flow('pef.asc','lag',
+     '''
+     echo -1 a0=1 n1=1 data_format=ascii_float in=$TARGET
+     lag=$SOURCE
+     ''',stdin=0)
+Flow('pef','pef.asc','dd form=native')
+finame_match = finame_dat+'_tomatch'
+Flow(finame_match,finame_dat,
+     '''
+     window n1=%d 
+     '''%(time_lag))
+d_dat_p_mod = []
+d_dat_m_mod = []
+
+for phsh_i in range(90):
+#for phsh_i in [23]:
+
+  phsh_itag = '%03d'%(phsh_i)
+  phsh = (phsh_i*math.pi)/(45.0)
+  phsh_re = math.cos(phsh-math.pi*0.5)
+  phsh_im = math.sin(phsh-math.pi*0.5)
+  foname_phsh =  finame_mod+'_ps%s'%(phsh_itag)
+  finame_phsh =  finame_mod
+
+  Flow(foname_phsh,finame_phsh,
+       '''
+       window n1=%d |
+       fft1 |
+       math output='(%g+I*%g)*(real(input)+imag(input))' | 
+       fft1 inv=y 
+       '''%(time_lag,phsh_re,phsh_im))
+
+  shifts = []
+  finame_lpf = foname_phsh
+  nshifts = 12
+  for s in range(0,nshifts):
+    shift = finame_lpf+'shift%02d'%(s)
+    Flow(shift,finame_lpf,
+         'window n1=%d | pad beg1=%d | put o1=%g' % (time_lag-nshifts,nshifts,0.000*0))
+    shifts.append(shift)
+  shifts.append(finame_lpf)
+  for s in range(nshifts+1,nshifts*2+1):
+    shift = finame_lpf+'shift%02d'%(s)
+    Flow(shift,finame_lpf,
+         'window n1=%d | pad end1=%d | put o1=%g' % (time_lag-nshifts,nshifts,0.000*0))
+    shifts.append(shift)
+  foname_shifts = finame_lpf+'shifts'
+  Flow(foname_shifts,shifts,'cat ${SOURCES[1:%d]}' % len(shifts))
+  foname_lpf = finame_mod+'_lpf_ps'+phsh_itag
+  filt_lpf = foname_lpf+'filt_ps'+phsh_itag
+  Flow(filt_lpf+' '+foname_lpf,foname_shifts+' '+finame_match+' pef',
+       '''
+       lpf match=${SOURCES[1]} rect1=17 rect2=17 niter=400
+       pred=${TARGETS[1]} pef=${SOURCES[2]}
+       ''')
+  d_dat_m_mod_lpf = foname_lpf+'_m'
+
+  Flow(d_dat_m_mod_lpf,finame_match+' '+foname_lpf,'add scale=1.0,-1.0 ${SOURCES[1]}')
+  d_dat_m_mod.append(d_dat_m_mod_lpf)
+
+foname = finame_dat+'_lpf'
+Flow(foname,d_dat_m_mod,
+     '''
+     cat ${SOURCES[1:%d]} | put o3=0 d3=4.0
+     '''%(len(d_dat_m_mod)))
 
 End()
