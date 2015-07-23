@@ -415,14 +415,40 @@ for si in [75]:
 
 ##ENDFOR { for si in range(ns):}
 
+########## Spike as multiples
+si_ref = 75
+stag_in='%03d'%si_ref
+
+vel_w = 1500
+spk_nt = 401
+spk_nr = 301
+sx = sx0 + si_ref*ds
+dt = 0.005
+drx = 0.0225*kilo
+rx0 = 3000
+t_dly = 10
+
+Flow('dat_spike',None,
+     '''
+     spike n1=%d n2=%d o1=%g d1=%g o2=%g d2=%g k1=%d
+     '''%(spk_nt,spk_nr,0.0,dt,rx0,drx,t_dly))
+Flow('dat_hyper','dat_spike',
+     '''
+     window n1=1 | math output="(%g)*sqrt((x1-%g)^2+(%g)^2)-%g"
+     '''%(1/(vel_w),sx,wbz,t_dly*dt))
+Flow('datSK_m0s'+stag_in,'dat_spike dat_hyper','$RSFROOT/bin/sfdatstretch inv=y datum=${SOURCES[1]}')
+
 ##### Redatum multiples to primaries
 sp_taper = 5
 timepad = nt
+t_taper = 10
 nrx = 32
 si_ref = 75
 stag_in='%03d'%si_ref
 datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
 datPP_xcr = [] 
+datSK_xcr = [] 
+
 rx_zoff = 133
 Flow('datPPDw_pad'+stag_in,datPPDw_fbi_in,
   '''
@@ -442,12 +468,24 @@ for rxi in range (nrx*2+1):
         '''
        costaper nw2=%d | window n2=%d f2=0 | pad beg2=%d | reverse which=1 opt=n | put o2=%g
         '''%(sp_taper,nr-(rxi-nrx),rxi-nrx,rx0))
+  Flow('datSK_m0_rev'+stag_in+'t'+trc_tag,'datSK_m0s'+stag_in,
+      '''
+      window n2=%d f2=%d | costaper nw2=%d nw1=%d | pad beg2=%d end2=%d | 
+      reverse which=1 opt=n | put o2=%g
+      '''%(nrx,rx_zoff-nrx*0.5,sp_taper*4,t_taper,rx_zoff-(1.5*nrx-rxi),nr-(rx_zoff+0.5*nrx+rxi),rx0))
 
   Flow('datPP_xcr'+stag_in+'t'+trc_tag,'datPPDw_pad'+stag_in+' datPP_wb_rev'+stag_in+'t'+trc_tag,
       '''
       $RSFROOT/bin/sfconv filt=${SOURCES[0]} < ${SOURCES[1]} each=y trans=y | window min1=0 | stack axis=2 norm=y
       ''',stdin=0)
+  Flow('datSK_xcr'+stag_in+'t'+trc_tag,'datPPDw_pad'+stag_in+' datSK_m0_rev'+stag_in+'t'+trc_tag,
+      '''
+      $RSFROOT/bin/sfconv filt=${SOURCES[0]} < ${SOURCES[1]} each=y trans=y | window min1=0 | stack axis=2 norm=y
+      ''',stdin=0)
+
   datPP_xcr.append('datPP_xcr'+stag_in+'t'+trc_tag)
+  datSK_xcr.append('datSK_xcr'+stag_in+'t'+trc_tag)
+
 ##ENDLOOP{for rxi in range (nrx*2+1):}
 #      $RSFROOT/bin/sfconvolve2 flt=${SOURCES[0]} < ${SOURCES[1]} | window min1=0.0 | stack axis=2 norm=n 
 
@@ -455,6 +493,10 @@ Flow('datPP_xcr'+stag_in,datPP_xcr,
   '''
   cat ${SOURCES[1:%d]} | window
   '''%(len(datPP_xcr)))
+Flow('datSK_xcr'+stag_in,datSK_xcr,
+  '''
+  cat ${SOURCES[1:%d]} | window
+  '''%(len(datSK_xcr)))
 
 ######## Create N shots from 1D shot
 #sx0 = sx0 
@@ -471,9 +513,12 @@ datPPUp_fbi_in = 'datPPUp_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
 
 datPP_nfs_in = 'datPP_nfs'+stag_in
 datPP_xcr_in = 'datPP_xcr'+stag_in
+datSK_xcr_in = 'datSK_xcr'+stag_in
 
 datPP_nfs_shof = []
 datPP_xcr_shof = []
+datSK_xcr_shof = []
+
 datPPDw_shof = []
 datPPUp_shof = []
 
@@ -492,6 +537,7 @@ for si in range(mig_ns):
   datPPUp_fbi_out = 'datPPUp_s'+stag
   datPP_nfs_out = 'datPP_nfs_s'+stag
   datPP_xcr_out = 'datPP_xcr_s'+stag
+  datSK_xcr_out = 'datSK_xcr_s'+stag
 
   Flow(datPPDw_fbi_out,datPPDw_fbi_in,
   '''
@@ -513,6 +559,12 @@ for si in range(mig_ns):
   costaper nw1=10 nw2=10 |
   put o2=%g
   '''%(rx0_out))
+  Flow(datSK_xcr_out,datSK_xcr_in,
+  '''
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(rx0_out))
+
   Flow(datPP_nfs_out,datPP_nfs_in,
   '''
   window f2=%d n2=%d |
@@ -521,7 +573,9 @@ for si in range(mig_ns):
   '''%(nrxi0,nrx*2+1,rx0_out))
   datPP_nfs_shof.append(datPP_nfs_out)
   datPP_xcr_shof.append(datPP_xcr_out)
+  datSK_xcr_shof.append(datSK_xcr_out)
   datPPDw_shof.append(datPPDw_fbi_out)
+  datPPUp_shof.append(datPPUp_fbi_out)
 
  
 ##ENDLOOP{for si in range(ns):}
@@ -540,8 +594,20 @@ Flow('datPPDw_shof',datPPDw_shof,
   put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
   unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
   '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+Flow('datPPUp_shof',datPPUp_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPPUp_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
 
 Flow('datPP_xcr_shof',datPP_xcr_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+Flow('datSK_xcr_shof',datSK_xcr_shof,
   '''
   cat ${SOURCES[1:%d]} |
   put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g

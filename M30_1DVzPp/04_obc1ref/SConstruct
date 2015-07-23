@@ -488,7 +488,7 @@ for rxi in range (nrx*2+1):
 #      ''',stdin=0)
   Flow('datSK_xcr'+stag_in+'t'+trc_tag,'datPPDw_pad'+stag_in+' datSK_m0_rev'+stag_in+'t'+trc_tag,
       '''
-      $RSFROOT/bin/sfconv filt=${SOURCES[0]} < ${SOURCES[1]} each=y trans=y | window min1=0 
+      $RSFROOT/bin/sfconv filt=${SOURCES[0]} < ${SOURCES[1]} each=y trans=y | window min1=0 | stack axis=2 norm=y 
       ''',stdin=0)
 
   datPP_xcr.append('datPP_xcr'+stag_in+'t'+trc_tag)
@@ -678,87 +678,101 @@ Flow('datSK_xcr'+stag_in,datSK_xcr,
 ##
 ##
 ##
-########## Create N shots from 1D shot
-###sx0 = sx0 
-###rx0 = rx0
-##drx = 0.0225*kilo
-##dsx= ds
-##mig_dsx= 0.0225*kilo
-##nrxi0 = int((sx0+si_ref*dsx-(rx0+nrx*drx))/drx)
-##phsh = 30
-###stag_in='%03d'%si_ref
-##phsh_itag = '%03d'%phsh
-##datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
-##datPPUp_fbi_in = 'datPPUp_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
-##
-##datPP_nfs_in = 'datPP_nfs'+stag_in
-##datPP_xcr_in = 'datPP_xcr'+stag_in
-##datPPAM_xcr_in = 'datPPAMmins_fbi_wdw'+stag_in+'_ps%s'%('009')
-##
-##datPP_nfs_shof = []
-##datPP_xcr_shof = []
-##datPPAM_xcr_shof = []
-##datPPDw_shof = []
-##datPPUp_shof = []
-##
-##mig_ns = 134
-##
-##mig_noff = nrx*2 + 1
-##
-##for si in range(mig_ns):
-###for si in [0,75,150]:
-######
-##  stag='%03d'%si
-##  sx = sx0 + si*mig_dsx
-##  nrxi = int((sx-rx0-nrx*drx)/drx)
-##  rx0_out = rx0+nrxi*drx
-##  datPPDw_fbi_out = 'datPPDw_s'+stag
-##  datPPUp_fbi_out = 'datPPUp_s'+stag
-##
-##  datPP_nfs_out = 'datPP_nfs_s'+stag
-##  datPP_xcr_out = 'datPP_xcr_s'+stag
-##  datPPAM_xcr_out = 'datPPAM_xcr_s'+stag
-##
-##  Flow(datPPDw_fbi_out,datPPDw_fbi_in,
-##  '''
-##  stack axis=3 norm=n | 
-##  window f2=%d n2=%d |
-##  costaper nw1=10 nw2=10 |
-##  put o2=%g
-##  '''%(nrxi0,nrx*2+1,rx0_out))
-##  Flow(datPPUp_fbi_out,datPPUp_fbi_in,
-##  '''
-##  stack axis=3 norm=n | 
-##  window f2=%d n2=%d |
-##  costaper nw1=10 nw2=10 |
-##  put o2=%g
-##  '''%(nrxi0,nrx*2+1,rx0_out))
-##
-##  Flow(datPP_xcr_out,datPP_xcr_in,
-##  '''
-##  costaper nw1=10 nw2=10 |
-##  put o2=%g
-##  '''%(rx0_out))
-##  Flow(datPPAM_xcr_out,datPPAM_xcr_in,
-##  '''
-##  costaper nw1=10 nw2=10 |
-##  put o2=%g
-##  '''%(rx0_out))
-##
-##  Flow(datPP_nfs_out,datPP_nfs_in,
-##  '''
-##  window f2=%d n2=%d |
-##  costaper nw1=10 nw2=10 |
-##  put o2=%g 
-##  '''%(nrxi0,nrx*2+1,rx0_out))
-##  datPP_nfs_shof.append(datPP_nfs_out)
-##  datPP_xcr_shof.append(datPP_xcr_out)
-##  datPPAM_xcr_shof.append(datPPAM_xcr_out)
-##  datPPDw_shof.append(datPPDw_fbi_out)
-##  datPPUp_shof.append(datPPUp_fbi_out)
-##
-## 
-####ENDLOOP{for si in range(ns):}
+######## Create N shots from 1D shot
+#sx0 = sx0 
+#rx0 = rx0
+drx = 0.0225*kilo
+dsx= ds
+mig_dsx= 0.0225*kilo
+nrxi0 = int((sx0+si_ref*dsx-(rx0+nrx*drx))/drx)
+phsh = 30
+#stag_in='%03d'%si_ref
+phsh_itag = '%03d'%phsh
+datPPDw_fbi_in = 'datPPDw_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
+datPPUp_fbi_in = 'datPPUp_fbi_wdw'+stag_in+'_ps%s'%(phsh_itag)
+
+datPP_nfs_in = 'datPP_nfs'+stag_in
+datPP_xcr_in = 'datPP_xcr'+stag_in
+datSK_xcr_in = 'datSK_xcr'+stag_in
+
+datPPAM_xcr_in = 'datPPAMmins_fbi_wdw'+stag_in+'_ps%s'%('009')
+
+datPP_nfs_shof = []
+datPP_xcr_shof = []
+datSK_xcr_shof = []
+
+datPPAM_xcr_shof = []
+datPPDw_shof = []
+datPPUp_shof = []
+
+mig_ns = 134
+
+mig_noff = nrx*2 + 1
+
+for si in range(mig_ns):
+#for si in [0,75,150]:
+####
+  stag='%03d'%si
+  sx = sx0 + si*mig_dsx
+  nrxi = int((sx-rx0-nrx*drx)/drx)
+  rx0_out = rx0+nrxi*drx
+  datPPDw_fbi_out = 'datPPDw_s'+stag
+  datPPUp_fbi_out = 'datPPUp_s'+stag
+
+  datPP_nfs_out = 'datPP_nfs_s'+stag
+  datPP_xcr_out = 'datPP_xcr_s'+stag
+  datSK_xcr_out = 'datSK_xcr_s'+stag
+
+  datPPAM_xcr_out = 'datPPAM_xcr_s'+stag
+
+  Flow(datPPDw_fbi_out,datPPDw_fbi_in,
+  '''
+  stack axis=3 norm=n | 
+  window f2=%d n2=%d |
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(nrxi0,nrx*2+1,rx0_out))
+  Flow(datPPUp_fbi_out,datPPUp_fbi_in,
+  '''
+  stack axis=3 norm=n | 
+  window f2=%d n2=%d |
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(nrxi0,nrx*2+1,rx0_out))
+
+  Flow(datPP_xcr_out,datPP_xcr_in,
+  '''
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(rx0_out))
+  Flow(datSK_xcr_out,datSK_xcr_in,
+  '''
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(rx0_out))
+
+  Flow(datPPAM_xcr_out,datPPAM_xcr_in,
+  '''
+  costaper nw1=10 nw2=10 |
+  put o2=%g
+  '''%(rx0_out))
+
+  Flow(datPP_nfs_out,datPP_nfs_in,
+  '''
+  window f2=%d n2=%d |
+  costaper nw1=10 nw2=10 |
+  put o2=%g 
+  '''%(nrxi0,nrx*2+1,rx0_out))
+  datPP_nfs_shof.append(datPP_nfs_out)
+  datPP_xcr_shof.append(datPP_xcr_out)
+  datSK_xcr_shof.append(datSK_xcr_out)
+
+  datPPAM_xcr_shof.append(datPPAM_xcr_out)
+  datPPDw_shof.append(datPPDw_fbi_out)
+  datPPUp_shof.append(datPPUp_fbi_out)
+
+ 
+##ENDLOOP{for si in range(ns):}
 ##
 ############ Migration
 ##
@@ -781,12 +795,19 @@ Flow('datSK_xcr'+stag_in,datSK_xcr,
 ##  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
 ##  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
 ##
-##Flow('datPP_xcr_shof',datPP_xcr_shof,
-##  '''
-##  cat ${SOURCES[1:%d]} |
-##  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
-##  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
-##  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+Flow('datPP_xcr_shof',datPP_xcr_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
+
+Flow('datSK_xcr_shof',datSK_xcr_shof,
+  '''
+  cat ${SOURCES[1:%d]} |
+  put n3=%d o3=%g d3=%g n2=%d o2=%g d2=%g
+  unit1=s unit2=m unit3=m label1="Time" label2="Offset" label3="SouPosition" 
+  '''%(len(datPP_nfs_shof),mig_ns,sx0,mig_dsx,mig_noff,-drx*nrx,drx))
 ##Flow('datPPAM_xcr_shof',datPPAM_xcr_shof,
 ##  '''
 ##  cat ${SOURCES[1:%d]} |
