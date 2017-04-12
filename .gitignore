@@ -1,0 +1,13 @@
+## Ignore files
+
+*.rsf
+*.txt
+*.vpl
+*.su
+*.segy
+*.bin
+*.asc
+hfile
+bfile
+*.rsf*
+
