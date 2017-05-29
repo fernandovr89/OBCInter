@@ -1,0 +1,113 @@
+from rsf.proj import *
+import numpy as np
+import math
+
+DATA_DIR = '../M11_convrec/'
+
+total_time = 6*60*60
+#total_time = 20
+dt = 0.02
+seg_dt = int(1/dt)
+total_n_time = total_time*seg_dt
+nt_trace = 200
+lngst_time = 6*nt_trace
+ns = 130
+max_ns = int(total_n_time/nt_trace)+1
+rec_i = 150
+rtag = '%03d'%rec_i
+nw_costaper = 10
+
+f1_convH=599
+n1_convH=600
+
+
+finame = DATA_DIR+'convH_r'+rtag+'_tostack.rsf'  
+foname ='convH_r'+rtag+'_tostack.rsf'  
+Flow(foname,finame,
+    '''
+    $RSFROOT/bin/sfwindow f1=%d n1=%d
+    '''%(f1_convH,n1_convH))
+
+n1_agc = 20
+total_segs = 1799
+n_segs = 19
+accum_segs = 0
+it = 0
+sumH_tocat = []
+
+f_create_segs = False
+if f_create_segs:
+
+  while total_segs - accum_segs > n_segs: 
+    ittag = '%05d'%it
+    finame ='convH_r'+rtag+'_tostack.rsf'  
+    foname ='convH_r'+rtag+'_tostack_it'+ittag+'.rsf'  
+    Flow(foname,finame,
+        '''
+        $RSFROOT/bin/sfwindow f2=%d n2=%d 
+        '''%(accum_segs,n_segs))
+    finame ='convH_r'+rtag+'_tostack_it'+ittag+'.rsf'  
+    foname ='convH_r'+rtag+'_it'+ittag+'.rsf'  
+    Flow(foname,finame,
+        '''
+        $RSFROOT/bin/sfstack axis=2 
+        | $RSFROOT/bin/sfagc rect1=%d
+        '''%(n1_agc))
+    finame =DATA_DIR+'convH_r'+rtag+'.rsf'+' '+'convH_r'+rtag+'_it'+ittag+'.rsf'
+    foname ='subH_r'+rtag+'_it'+ittag+'.rsf'  
+    Flow(foname,finame,
+        '''
+        $RSFROOT/bin/sfwindow f1=%d n1=%d
+        | $RSFROOT/bin/sfagc rect1=%d
+        | $RSFROOT/bin/sfmath x=${SOURCES[1]} output='input-x'
+        '''%(f1_convH,n1_convH,n1_agc))
+    finame ='subH_r'+rtag+'_it'+ittag+'.rsf' 
+    foname ='sub2H_r'+rtag+'_it'+ittag+'.rsf'  
+    Flow(foname,finame,
+        '''
+        $RSFROOT/bin/sfmath output='input*input'
+        ''')
+    finame ='sub2H_r'+rtag+'_it'+ittag+'.rsf' 
+    foname ='sumH_r'+rtag+'_it'+ittag+'.rsf'  
+    Flow(foname,finame,
+        '''
+        $RSFROOT/bin/sfstack axis=1
+        ''')
+    accum_segs += n_segs
+    sumH_tocat.append(foname)
+    it+=1
+  ##END WHILE total_n_time - accum_t > size_segment 
+    
+  finame = sumH_tocat
+  foname ='sumH_r'+rtag+'_ensm.rsf'  
+  Flow(foname,finame,
+      '''
+      $RSFROOT/bin/sfcat ${SOURCES[1:%d]} axis=1
+      | $RSFROOT/bin/sfput o1=0 d1=1
+      '''%(len(finame)))
+##ENDIF f_create_segs:
+
+f_convMconvstk = True
+if f_convMconvstk:
+
+  finame = 'convH_r'+rtag+'_tostack.rsf'  
+  foname = 'convH_r'+rtag+'_tostack_agc.rsf'  
+  Flow(foname,finame,
+      '''
+      $RSFROOT/bin/sfwindow
+      | $RSFROOT/bin/sfagc rect1=%d
+      '''%(n1_agc))
+  
+  finame =DATA_DIR+'convH_r'+rtag+'.rsf'+' '+'convH_r'+rtag+'_tostack_agc.rsf'
+  foname ='convMstkH_r'+rtag+'.rsf'  
+  Flow(foname,finame,
+      '''
+      $RSFROOT/bin/sfwindow f1=%d n1=%d 
+      | $RSFROOT/bin/sfagc rect1=%d
+      | $RSFROOT/bin/sfspray axis=2 n=%d
+      | $RSFROOT/bin/sfmath x=${SOURCES[1]} output='(input-x)^2'
+      | $RSFROOT/bin/sfstack axis=1
+      | $RSFROOT/bin/sfput o1=0 d1=1
+      '''%(f1_convH,n1_convH,n1_agc,total_segs))
+##ENDIF  f_convMconvstk:
+
