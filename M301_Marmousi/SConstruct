@@ -4,7 +4,7 @@ import ast
 
 xmax = 14.0
 zmax = 6.0
-wbz = 0.112
+wbz = 0.084
 #layers = ((wbz,wbz,wbz,wbz),
 #          (0.95,0.95,0.95,0.95),
 #          (2.00,2.00,1.75,1.75),
@@ -47,13 +47,13 @@ nz = int(1.5+zmax/d)
 # ------------------------------------------------------------
 # Sigsbee 2A parameters
 nx=2301
-nz=751
+nz=1151
 dx=0.004
 dz=dx
 par1 = dict( 
     nx=2301, ox=0.0 ,dx=0.004, lx='x',ux='km',
-    nz=751, oz=0.0, dz=0.004, lz='z',uz='km',
-    nt=20001,ot=0.0, dt=0.0002, lt='t',ut='s',
+    nz=1151, oz=0.0, dz=0.004, lz='z',uz='km',
+    nt=12501,ot=0.0, dt=0.0002, lt='t',ut='s',
     pclip=99.0,
     ratio=1.0,
     jsnap=2500,
@@ -106,7 +106,7 @@ Plot('rH',fdmod.rrplot('',par1))
 #
 ## ------------------------------------------------------------
 # construct wavelet
-fdmod.wavelet('wav_',7,par1) 
+fdmod.wavelet('wav_',9,par1) 
 
 # transpose wavelet
 Flow(  'wav','wav_','transp')      
@@ -131,8 +131,10 @@ Flow('marmvel','marmvel.hh',
 
 # smooth model
 Flow('marm1','marmvel','window n1=7')
-Flow('marm2','marmvel','window f1=7 n1=723 | smooth rect1=15 rect2=15 repeat=2')
-finame = 'marm1 marm1 marm1 marm1 marm2'
+Flow('marm2','marmvel','window f1=7 n1=730 | smooth rect1=15 rect2=15 repeat=2')
+Flow('marm3','marmvel','window f1=7 n1=730 | smooth rect1=15 rect2=15 repeat=2 | window f1=729 | spray axis=1 n=400')
+
+finame = 'marm1 marm1 marm1 marm2 marm3'
 Flow('marm',finame,
      '''
      $RSFROOT/bin/sfcat axis=1 ${SOURCES[1:%d]}
@@ -153,7 +155,7 @@ for si in range(0,ns,4):
 # source coordinates (exploding reflectors)
   fdmod.boxarray('ss'+stag,
                  1,   # vertical number
-                 2.5,   # vertical origin 
+                 1.5,   # vertical origin 
                  0.01, # vertical sampling
                  2,  # horizontal number
                  2.6+ds*si,  # horizontal origin
