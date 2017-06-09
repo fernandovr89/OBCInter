@@ -146,7 +146,7 @@ Plot('vstr',fdmod.cgrey('mean=y',par1))
 
 ## ------------------------------------------------------------
 
-for si in range(0,ns,4):
+for si in range(2,ns,4):
 #for si in [1]:
 
   stag='%03d'%si
